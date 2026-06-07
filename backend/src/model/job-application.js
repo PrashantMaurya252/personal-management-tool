@@ -3,9 +3,20 @@ import mongoose from "mongoose";
 const JobApplicationSchema = new mongoose.Schema(
   {
     // Job Information
-    companyName: {
-      type: String,
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
+    },
+    company: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true,
+    },
+
+    hiringManager: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "HiringManager",
     },
 
     jobTitle: {
@@ -13,15 +24,16 @@ const JobApplicationSchema = new mongoose.Schema(
       required: true,
     },
 
-    hrName: String,
-
-    hrEmail: String,
-
-    hrPhone: String,
-
     source: {
       type: String,
-      enum: ["LinkedIn", "Naukri", "Indeed", "Referral", "Company Website", "Other"],
+      enum: [
+        "LinkedIn",
+        "Naukri",
+        "Indeed",
+        "Referral",
+        "Company Website",
+        "Other",
+      ],
       default: "LinkedIn",
     },
 
@@ -66,13 +78,7 @@ const JobApplicationSchema = new mongoose.Schema(
     email: {
       status: {
         type: String,
-        enum: [
-          "draft",
-          "queued",
-          "sent",
-          "failed",
-          "replied",
-        ],
+        enum: ["draft", "queued", "sent", "failed", "replied"],
         default: "draft",
       },
 
@@ -105,13 +111,7 @@ const JobApplicationSchema = new mongoose.Schema(
     whatsapp: {
       status: {
         type: String,
-        enum: [
-          "draft",
-          "sent",
-          "delivered",
-          "read",
-          "failed",
-        ],
+        enum: ["draft", "sent", "delivered", "read", "failed"],
         default: "draft",
       },
 
@@ -149,7 +149,7 @@ const JobApplicationSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export default mongoose.models.JobApplication ||

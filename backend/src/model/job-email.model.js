@@ -2,13 +2,20 @@ import mongoose from "mongoose";
 
 const emailSchema = new mongoose.Schema(
   {
-    companyName: {
-      type: String,
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    company: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref:"Company",
       required: true,
     },
 
     recipientEmail: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref:"HiringManager",
       required: true,
     },
 
@@ -70,11 +77,10 @@ const emailSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const EmailModel =
-  mongoose.models.JobEmail ||
-  mongoose.model("JobEmail", emailSchema);
+  mongoose.models.JobEmail || mongoose.model("JobEmail", emailSchema);
 
 export default EmailModel;
