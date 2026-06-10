@@ -4,6 +4,15 @@ dotenv.config()
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Groq from "groq-sdk";
 
+const emailId = process.env.USER_EMAIL;
+
+const trackingLinks = {
+  github: `${process.env.BACKEND_URL}/api/track/click/${emailId}/github`,
+  linkedin: `${process.env.BACKEND_URL}/api/track/click/${emailId}/linkedin`,
+  portfolio: `${process.env.BACKEND_URL}/api/track/click/${emailId}/portfolio`,
+  resume: `${process.env.BACKEND_URL}/api/resume/download/${emailId}`,
+};
+
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY);
 
 const groq = new Groq({
@@ -183,17 +192,28 @@ Full Stack Developer
 Phone: +91 6306315885
 Email: prashantmaurya252@outlook.com
 
-GitHub:
-https://github.com/PrashantMaurya252
-
-LinkedIn:
-https://www.linkedin.com/in/pkm252/
-
-Portfolio:
-https://e-commerce-with-postgre-and-prisma.vercel.app
-
 Resume:
 Attached with this email.
+
+IMPORTANT:
+
+Do not use direct URLs.
+
+Use the following placeholders in the email:
+
+{{GITHUB_LINK}}
+{{LINKEDIN_LINK}}
+{{PORTFOLIO_LINK}}
+{{RESUME_LINK}}
+
+Example:
+
+GitHub: {{GITHUB_LINK}}
+LinkedIn: {{LINKEDIN_LINK}}
+Portfolio: {{PORTFOLIO_LINK}}
+Resume: {{RESUME_LINK}}
+
+Generate professional email content using these placeholders.
 
 Return ONLY valid JSON.
 
