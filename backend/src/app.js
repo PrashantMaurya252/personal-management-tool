@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import authRoutes from './routes/auth.routes.js'
 import { connectToDB } from './utils/connectTodb.js'
+import jobEmailRoutes from './routes/job-email.js'
 
 const app = express()
 
@@ -17,6 +18,7 @@ app.use(cors(
 app.use(cookieParser())
 
 app.use("/api/v1",authRoutes)
+app.use("/api/v1",jobEmailRoutes)
 
 
 export default app
