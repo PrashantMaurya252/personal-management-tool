@@ -1,9 +1,12 @@
-import HiringManagerModel from "../model/hiring-manager.js";
+import HiringManagerModel from "../model/hiring-managers.js";
 import { successResponse, errorResponse } from "../utils/apiResponse.js";
 
 export const addHiringManager = async (req, res) => {
   try {
-    const hiringManager = await HiringManagerModel.create(req.body);
+    const hiringManager = await HiringManagerModel.create({
+      ...req.body,
+      userId: req.userId
+    });
 
     return successResponse(
       res,
@@ -18,7 +21,7 @@ export const addHiringManager = async (req, res) => {
 
 export const getHiringManagers = async (req, res) => {
   try {
-    const managers = await HiringManagerModel.find()
+    const managers = await HiringManagerModel.find({ userId: req.userId })
       .populate("company");
 
     return successResponse(

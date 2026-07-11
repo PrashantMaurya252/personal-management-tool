@@ -12,12 +12,12 @@ export const signup = async (req, res) => {
     }
     const isExist = await UserModel.findOne({ email });
     if (isExist) {
-      return res.status.json({
+      return res.status(400).json({
         success: false,
         message: "This email already exist",
       });
     }
-    const hashedPassword = bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
     await UserModel.create({ email, name, password: hashedPassword });
     return res
       .status(201)

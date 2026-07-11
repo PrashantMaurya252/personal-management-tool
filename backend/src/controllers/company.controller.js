@@ -3,7 +3,10 @@ import { successResponse, errorResponse } from "../utils/apiResponse.js";
 
 export const createCompany = async (req, res) => {
   try {
-    const company = await CompanyModel.create(req.body);
+    const company = await CompanyModel.create({
+      ...req.body,
+      userId: req.userId
+    });
 
     return successResponse(
       res,
@@ -18,7 +21,7 @@ export const createCompany = async (req, res) => {
 
 export const getCompanies = async (req, res) => {
   try {
-    const companies = await CompanyModel.find();
+    const companies = await CompanyModel.find({ userId: req.userId });
 
     return successResponse(
       res,
