@@ -1,6 +1,51 @@
 import CompanyModel from "../model/company.model.js";
+import HiringManagerModel from "../model/hiring-managers.js";
+import JobApplicationModel from "../model/job-application.js";
+import JobOpeningModel from "../model/job-opening.model.js";
 import { successResponse, errorResponse } from "../utils/apiResponse.js";
 import * as xlsx from "xlsx";
+
+const mapCompanySize = (sizeStr) => {
+  if (!sizeStr) return undefined;
+  
+  const s = String(sizeStr).trim().toLowerCase();
+  
+  // Exact matches for the allowed enums
+  if (["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"].includes(s)) return s;
+
+  // Custom user rules
+  if (s.includes("10000") || s.includes("10k")) return "1000+";
+  if (s === "500+" || s === "500 +" || s.includes("500-1000") || s.includes("501-1000")) return "501-1000";
+
+  // Generic fallback by parsing the first number found
+  const match = s.match(/\d+/g);
+  if (match) {
+    const num = parseInt(match[0], 10);
+    if (num > 1000) return "1000+";
+    if (num > 500) return "501-1000";
+    if (num > 200) return "201-500";
+    if (num > 50) return "51-200";
+    if (num > 10) return "11-50";
+    return "1-10";
+  }
+  
+  return undefined;
+};
+
+const mapCompanyType = (typeStr) => {
+  if (!typeStr) return undefined;
+  const t = String(typeStr).trim();
+  const lower = t.toLowerCase();
+  if (lower === 'product') return 'Product';
+  if (lower === 'service') return 'Service';
+  return ["Product", "Service"].includes(t) ? t : undefined;
+};
+
+const mapStatus = (statusStr) => {
+  if (!statusStr) return "not_applied";
+  const s = String(statusStr).trim().toLowerCase().replace(/\s+/g, "_");
+  return ["not_applied", "applied", "interview", "rejected", "selected"].includes(s) ? s : "not_applied";
+};
 
 export const uploadCompaniesExcel = async (req, res) => {
   try {
@@ -17,27 +62,35 @@ export const uploadCompaniesExcel = async (req, res) => {
     const rawData = xlsx.utils.sheet_to_json(sheet);
 
     // Map data to match the schema
-    const companiesToInsert = rawData.map((row) => ({
+    const companiesToUpsert = rawData.map((row) => ({
       userId: req.userId,
-      name: row.name || row.Name || row.Company || "Unknown",
+      name: (row.name || row.Name || row.Company || "Unknown").toLowerCase().trim(),
       website: row.website || row.Website || "",
       linkedinUrl: row.linkedinUrl || row.Linkedin || "",
       industry: row.industry || row.Industry || "",
       location: row.location || row.Location || "",
-      companySize: row.companySize || row.Size || undefined,
+      companySize: mapCompanySize(row.companySize || row.Size),
       notes: row.notes || row.Notes || "",
-      status: row.status ? row.status.toLowerCase() : "not_applied",
-      companyType: row.companyType || row.Type || undefined,
+      status: mapStatus(row.status),
+      companyType: mapCompanyType(row.companyType || row.Type),
       companyCareerPage: row.companyCareerPage || row.CareerPage || "",
     }));
 
-    // Save to database
-    const insertedCompanies = await CompanyModel.insertMany(companiesToInsert);
+    // Save to database using bulkWrite for upsert functionality
+    const bulkOps = companiesToUpsert.map((companyData) => ({
+      updateOne: {
+        filter: { userId: companyData.userId, name: companyData.name },
+        update: { $set: companyData },
+        upsert: true,
+      },
+    }));
+
+    const result = await CompanyModel.bulkWrite(bulkOps);
 
     return successResponse(
       res,
-      `${insertedCompanies.length} companies uploaded successfully`,
-      insertedCompanies,
+      `Processed ${companiesToUpsert.length} companies (${result.upsertedCount} new, ${result.modifiedCount} updated)`,
+      null,
       201
     );
   } catch (error) {
@@ -128,22 +181,18 @@ export const updateCompany = async (req, res) => {
 
 export const deleteCompany = async (req, res) => {
   try {
-    const company = await CompanyModel.findByIdAndDelete(
-      req.params.id
-    );
+    const company = await CompanyModel.findByIdAndDelete(req.params.id);
 
     if (!company) {
-      return errorResponse(
-        res,
-        "Company not found",
-        404
-      );
+      return errorResponse(res, "Company not found", 404);
     }
 
-    return successResponse(
-      res,
-      "Company deleted successfully"
-    );
+    // Cascade delete associated data
+    await HiringManagerModel.deleteMany({ company: req.params.id });
+    await JobApplicationModel.deleteMany({ company: req.params.id });
+    await JobOpeningModel.deleteMany({ companyId: req.params.id });
+
+    return successResponse(res, "Company and all associated data deleted successfully");
   } catch (error) {
     return errorResponse(res, error.message);
   }

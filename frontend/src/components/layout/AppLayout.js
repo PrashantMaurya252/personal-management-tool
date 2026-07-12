@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, Users, FileText, Settings, LogOut, Mail } from "lucide-react";
+import { LayoutDashboard, Building2, Users, FileText, Settings, LogOut, Mail, Telescope } from "lucide-react";
 
 export default function AppLayout({ children }) {
   const pathname = usePathname();
@@ -14,6 +14,7 @@ export default function AppLayout({ children }) {
     { name: "Hiring Managers", href: "/dashboard/hiring-managers", icon: Users },
     { name: "Email Outreach", href: "/dashboard/emails", icon: Mail },
     { name: "Resume", href: "/dashboard/resume", icon: FileText },
+    { name: "Job Scout", href: "/dashboard/scout", icon: Telescope },
   ];
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Search, MoreVertical, UserCircle, X, Loader2 } from "lucide-react";
+import { Plus, Search, MoreVertical, UserCircle, X, Loader2, Pencil, Trash2 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "react-hot-toast";
 
@@ -9,6 +9,7 @@ export default function HiringManagersPage() {
   const [managers, setManagers] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingManager, setEditingManager] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -47,22 +48,62 @@ export default function HiringManagersPage() {
     fetchCompanies();
   }, []);
 
-  const handleAddManager = async (e) => {
+  const handleAddOrUpdateManager = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const response = await axiosInstance.post("/hiring-managers", formData);
-      if (response.data.success) {
-        toast.success("Manager added successfully");
-        setIsAddModalOpen(false);
-        setFormData({ name: "", company: "", email: "", phone: "", linkedinUrl: "", status: "active" });
-        fetchManagers();
+      if (editingManager) {
+        const response = await axiosInstance.put(`/hiring-managers/${editingManager._id}`, formData);
+        if (response.data.success) {
+          toast.success("Manager updated successfully");
+          closeModals();
+          fetchManagers();
+        }
+      } else {
+        const response = await axiosInstance.post("/hiring-managers", formData);
+        if (response.data.success) {
+          toast.success("Manager added successfully");
+          closeModals();
+          fetchManagers();
+        }
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to add manager");
+      toast.error(error.response?.data?.message || (editingManager ? "Failed to update manager" : "Failed to add manager"));
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleDeleteManager = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this hiring manager?")) return;
+    
+    try {
+      const response = await axiosInstance.delete(`/hiring-managers/${id}`);
+      if (response.data.success) {
+        toast.success("Manager deleted successfully");
+        fetchManagers();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete manager");
+    }
+  };
+
+  const openEditModal = (manager) => {
+    setEditingManager(manager);
+    setFormData({
+      name: manager.name || "",
+      company: manager.company?._id || manager.company || "",
+      email: manager.email || "",
+      phone: manager.phone || "",
+      linkedinUrl: manager.linkedinUrl || "",
+      status: manager.status || "active",
+    });
+  };
+
+  const closeModals = () => {
+    setIsAddModalOpen(false);
+    setEditingManager(null);
+    setFormData({ name: "", company: "", email: "", phone: "", linkedinUrl: "", status: "active" });
   };
 
   return (
@@ -125,9 +166,22 @@ export default function HiringManagersPage() {
                   </td>
                   <td className="p-4 text-neutral-400">{manager.phone || "-"}</td>
                   <td className="p-4 text-right pr-6">
-                    <button className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition-colors">
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center justify-end space-x-2">
+                      <button 
+                        onClick={() => openEditModal(manager)}
+                        className="p-2 text-neutral-400 hover:text-indigo-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                        title="Edit Manager"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteManager(manager._id)}
+                        className="p-2 text-neutral-400 hover:text-red-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                        title="Delete Manager"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -143,18 +197,18 @@ export default function HiringManagersPage() {
         </div>
       </div>
 
-      {/* Add Manager Modal */}
-      {isAddModalOpen && (
+      {/* Add / Edit Manager Modal */}
+      {(isAddModalOpen || editingManager) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between p-6 border-b border-neutral-800">
-              <h2 className="text-xl font-bold text-white">Add Manager</h2>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-neutral-400 hover:text-white transition-colors">
+              <h2 className="text-xl font-bold text-white">{editingManager ? "Edit Manager" : "Add Manager"}</h2>
+              <button onClick={closeModals} className="text-neutral-400 hover:text-white transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            <form onSubmit={handleAddManager} className="p-6 space-y-4">
+            <form onSubmit={handleAddOrUpdateManager} className="p-6 space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-neutral-300">Name</label>
                 <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-neutral-950 border border-neutral-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="E.g. Jane Doe" />
@@ -186,11 +240,11 @@ export default function HiringManagersPage() {
               </div>
 
               <div className="pt-4 flex items-center space-x-3">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-3 bg-neutral-800 text-white font-medium rounded-xl hover:bg-neutral-700 transition-colors">
+                <button type="button" onClick={closeModals} className="flex-1 py-3 bg-neutral-800 text-white font-medium rounded-xl hover:bg-neutral-700 transition-colors">
                   Cancel
                 </button>
                 <button type="submit" disabled={isSubmitting} className="flex-1 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-70 flex items-center justify-center">
-                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Save Manager"}
+                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (editingManager ? "Update Manager" : "Save Manager")}
                 </button>
               </div>
             </form>

@@ -15,12 +15,9 @@ export default function ResumePage() {
   const [portfolio, setPortfolio] = useState("");
   const [isUpdatingLinks, setIsUpdatingLinks] = useState(false);
   
-  // Custom Data State
   const [desiredRoles, setDesiredRoles] = useState([]);
   const [newRole, setNewRole] = useState("");
-  const [experience, setExperience] = useState([]);
-  const [newExp, setNewExp] = useState({ company: "", role: "", duration: "" });
-  const [isUpdatingCustom, setIsUpdatingCustom] = useState(false);
+  const [isUpdatingRoles, setIsUpdatingRoles] = useState(false);
 
   useEffect(() => {
     const fetchResume = async () => {
@@ -33,7 +30,6 @@ export default function ResumePage() {
           setLinkedin(data.linkedin || "");
           setPortfolio(data.portfolio || "");
           setDesiredRoles(data.desiredRoles || []);
-          setExperience(data.experience || []);
         }
       } catch (error) {
         console.error("Failed to fetch resume:", error);
@@ -61,7 +57,6 @@ export default function ResumePage() {
         setLinkedin(data.linkedin || "");
         setPortfolio(data.portfolio || "");
         setDesiredRoles(data.desiredRoles || []);
-        setExperience(data.experience || []);
         toast.success("Resume parsed successfully!");
       }
     } catch (error) {
@@ -216,7 +211,23 @@ export default function ResumePage() {
                  {desiredRoles.map((role, i) => (
                    <span key={i} className="px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full text-sm flex items-center">
                      {role}
-                     <button onClick={() => setDesiredRoles(desiredRoles.filter((_, idx) => idx !== i))} className="ml-2 text-indigo-400 hover:text-white">&times;</button>
+                     <button 
+                      onClick={async () => {
+                        const updatedRoles = desiredRoles.filter((_, idx) => idx !== i);
+                        setDesiredRoles(updatedRoles);
+                        setIsUpdatingRoles(true);
+                        try {
+                          await axiosInstance.put("/resume/data", { desiredRoles: updatedRoles });
+                          toast.success("Role removed");
+                        } catch (error) {
+                          toast.error("Failed to remove role");
+                          // Revert on error
+                          setDesiredRoles(desiredRoles);
+                        } finally {
+                          setIsUpdatingRoles(false);
+                        }
+                      }} 
+                      className="ml-2 text-indigo-400 hover:text-white">&times;</button>
                    </span>
                  ))}
                  {desiredRoles.length === 0 && <span className="text-neutral-500 text-sm">No desired roles added yet.</span>}
@@ -226,86 +237,52 @@ export default function ResumePage() {
                    type="text"
                    value={newRole}
                    onChange={(e) => setNewRole(e.target.value)}
-                   onKeyDown={(e) => {
+                   onKeyDown={async (e) => {
                      if (e.key === 'Enter' && newRole.trim()) {
-                       setDesiredRoles([...desiredRoles, newRole.trim()]);
+                       const roleToAdd = newRole.trim();
+                       const updatedRoles = [...desiredRoles, roleToAdd];
+                       setDesiredRoles(updatedRoles);
                        setNewRole("");
+                       setIsUpdatingRoles(true);
+                       try {
+                         await axiosInstance.put("/resume/data", { desiredRoles: updatedRoles });
+                         toast.success("Role added");
+                       } catch (error) {
+                         toast.error("Failed to add role");
+                         setDesiredRoles(desiredRoles);
+                       } finally {
+                         setIsUpdatingRoles(false);
+                       }
                      }
                    }}
                    placeholder="e.g. Frontend Developer"
                    className="flex-1 bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                  />
                  <button 
-                   onClick={() => {
+                   onClick={async () => {
                      if (newRole.trim()) {
-                       setDesiredRoles([...desiredRoles, newRole.trim()]);
+                       const roleToAdd = newRole.trim();
+                       const updatedRoles = [...desiredRoles, roleToAdd];
+                       setDesiredRoles(updatedRoles);
                        setNewRole("");
+                       setIsUpdatingRoles(true);
+                       try {
+                         await axiosInstance.put("/resume/data", { desiredRoles: updatedRoles });
+                         toast.success("Role added");
+                       } catch (error) {
+                         toast.error("Failed to add role");
+                         setDesiredRoles(desiredRoles);
+                       } finally {
+                         setIsUpdatingRoles(false);
+                       }
                      }
                    }}
-                   className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-sm transition-colors"
+                   disabled={isUpdatingRoles}
+                   className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-sm transition-colors disabled:opacity-50"
                  >
-                   Add
+                   {isUpdatingRoles ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
                  </button>
                </div>
-            </div>
-
-            <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 backdrop-blur-xl">
-               <h4 className="font-bold text-white mb-4">Experience</h4>
-               <div className="space-y-6 mb-6">
-                 {experience.map((exp, i) => (
-                   <div key={i} className="relative pl-6 border-l-2 border-neutral-800 pb-2 last:pb-0 group">
-                     <div className="absolute w-3 h-3 bg-neutral-800 rounded-full -left-[7px] top-1.5 border-2 border-neutral-950"></div>
-                     <div className="flex justify-between items-start">
-                       <div>
-                         <h5 className="font-bold text-white">{exp.role}</h5>
-                         <p className="text-blue-400 text-sm mt-1">{exp.company}</p>
-                         <p className="text-neutral-500 text-sm mt-1">{exp.duration}</p>
-                       </div>
-                       <button onClick={() => setExperience(experience.filter((_, idx) => idx !== i))} className="text-neutral-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                         &times;
-                       </button>
-                     </div>
-                   </div>
-                 ))}
-               </div>
-               <div className="space-y-3 pt-4 border-t border-neutral-800">
-                 <h5 className="text-sm font-medium text-neutral-400">Add Experience</h5>
-                 <div className="grid grid-cols-2 gap-3">
-                   <input type="text" placeholder="Company" value={newExp.company} onChange={e => setNewExp({...newExp, company: e.target.value})} className="bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-sm text-white" />
-                   <input type="text" placeholder="Role" value={newExp.role} onChange={e => setNewExp({...newExp, role: e.target.value})} className="bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-sm text-white" />
-                   <input type="text" placeholder="Duration (e.g. 2020 - Present)" value={newExp.duration} onChange={e => setNewExp({...newExp, duration: e.target.value})} className="bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-sm text-white col-span-2" />
-                 </div>
-                 <button 
-                   onClick={() => {
-                     if (newExp.company && newExp.role) {
-                       setExperience([...experience, newExp]);
-                       setNewExp({ company: "", role: "", duration: "" });
-                     }
-                   }}
-                   className="w-full px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-sm transition-colors mt-2"
-                 >
-                   Add Experience
-                 </button>
-               </div>
-               
-               <button
-                  onClick={async () => {
-                    setIsUpdatingCustom(true);
-                    try {
-                      await axiosInstance.put("/resume/data", { desiredRoles, experience });
-                      toast.success("Profile data saved!");
-                    } catch (error) {
-                      toast.error("Failed to save data");
-                    } finally {
-                      setIsUpdatingCustom(false);
-                    }
-                  }}
-                  disabled={isUpdatingCustom}
-                  className="w-full mt-6 flex items-center justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
-                >
-                  {isUpdatingCustom ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  {isUpdatingCustom ? "Saving Changes..." : "Save Roles & Experience"}
-                </button>
             </div>
             
             <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 backdrop-blur-xl">

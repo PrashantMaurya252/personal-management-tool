@@ -7,6 +7,8 @@ import jobEmailRoutes from './routes/job-email.js'
 import companyRoutes from './routes/company.routes.js'
 import hiringManagerRoutes from './routes/hiring-manager.routes.js'
 import resumeRoutes from './routes/resume.routes.js'
+import jobOpeningRoutes from './routes/job-opening.routes.js'
+import scoutSettingsRoutes from './routes/scout-settings.routes.js'
 
 const app = express()
 
@@ -24,5 +26,7 @@ app.use("/api/v1/emails", jobEmailRoutes)
 app.use("/api/v1",companyRoutes)
 app.use("/api/v1",hiringManagerRoutes)
 app.use("/api/v1",resumeRoutes)
+app.use("/api/v1",jobOpeningRoutes)
+app.use("/api/v1",scoutSettingsRoutes)
 
 export default app

@@ -62,6 +62,11 @@ const CompanySchema = new mongoose.Schema(
       type: String
     },
 
+    isScoutEnabled: {
+      type: Boolean,
+      default: false,
+    },
+
     status: {
       type: String,
       enum: [

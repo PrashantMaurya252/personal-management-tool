@@ -11,10 +11,10 @@ const axiosInstance = axios.create({
   },
 });
 
-// Request interceptor
+
 axiosInstance.interceptors.request.use(
   (config) => {
-    // We can attach any additional headers or tokens here if needed
+    
     return config;
   },
   (error) => {
@@ -22,13 +22,13 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Response interceptor
+
 axiosInstance.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
-    // Handle global errors, e.g., unauthorized access
+    
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
         // Redirect to login if unauthorized

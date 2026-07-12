@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Plus, Search, MoreVertical, Building2, UploadCloud, Loader2, Download, X } from "lucide-react";
+import { Plus, Search, MoreVertical, Building2, UploadCloud, Loader2, Download, X, Pencil, Trash2 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "react-hot-toast";
 
@@ -9,6 +9,7 @@ export default function CompaniesPage() {
   const [companies, setCompanies] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingCompany, setEditingCompany] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -62,22 +63,64 @@ export default function CompaniesPage() {
     }
   };
 
-  const handleAddCompany = async (e) => {
+  const handleAddOrUpdateCompany = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const response = await axiosInstance.post("/companies", formData);
-      if (response.data.success) {
-        toast.success("Company added successfully");
-        setIsAddModalOpen(false);
-        setFormData({ name: "", industry: "", companyType: "Product", location: "", companyCareerPage: "", status: "not_applied" });
-        fetchCompanies();
+      if (editingCompany) {
+        const response = await axiosInstance.put(`/companies/${editingCompany._id}`, formData);
+        if (response.data.success) {
+          toast.success("Company updated successfully");
+          setEditingCompany(null);
+          setFormData({ name: "", industry: "", companyType: "Product", location: "", companyCareerPage: "", status: "not_applied" });
+          fetchCompanies();
+        }
+      } else {
+        const response = await axiosInstance.post("/companies", formData);
+        if (response.data.success) {
+          toast.success("Company added successfully");
+          setIsAddModalOpen(false);
+          setFormData({ name: "", industry: "", companyType: "Product", location: "", companyCareerPage: "", status: "not_applied" });
+          fetchCompanies();
+        }
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to add company");
+      toast.error(error.response?.data?.message || (editingCompany ? "Failed to update company" : "Failed to add company"));
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleDeleteCompany = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this company? This will also delete all associated hiring managers and job openings!")) return;
+    
+    try {
+      const response = await axiosInstance.delete(`/companies/${id}`);
+      if (response.data.success) {
+        toast.success("Company deleted successfully");
+        fetchCompanies();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete company");
+    }
+  };
+
+  const openEditModal = (company) => {
+    setEditingCompany(company);
+    setFormData({
+      name: company.name || "",
+      industry: company.industry || "",
+      companyType: company.companyType || "Product",
+      location: company.location || "",
+      companyCareerPage: company.companyCareerPage || "",
+      status: company.status || "not_applied",
+    });
+  };
+
+  const closeModals = () => {
+    setIsAddModalOpen(false);
+    setEditingCompany(null);
+    setFormData({ name: "", industry: "", companyType: "Product", location: "", companyCareerPage: "", status: "not_applied" });
   };
 
   return (
@@ -180,9 +223,22 @@ export default function CompaniesPage() {
                     </span>
                   </td>
                   <td className="p-4 text-right pr-6">
-                    <button className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition-colors">
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center justify-end space-x-2">
+                      <button 
+                        onClick={() => openEditModal(company)}
+                        className="p-2 text-neutral-400 hover:text-blue-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                        title="Edit Company"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteCompany(company._id)}
+                        className="p-2 text-neutral-400 hover:text-red-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                        title="Delete Company"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -198,18 +254,18 @@ export default function CompaniesPage() {
         </div>
       </div>
 
-      {/* Add Company Modal */}
-      {isAddModalOpen && (
+      {/* Add / Edit Company Modal */}
+      {(isAddModalOpen || editingCompany) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between p-6 border-b border-neutral-800">
-              <h2 className="text-xl font-bold text-white">Add Company</h2>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-neutral-400 hover:text-white transition-colors">
+              <h2 className="text-xl font-bold text-white">{editingCompany ? "Edit Company" : "Add Company"}</h2>
+              <button onClick={closeModals} className="text-neutral-400 hover:text-white transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            <form onSubmit={handleAddCompany} className="p-6 space-y-4">
+            <form onSubmit={handleAddOrUpdateCompany} className="p-6 space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-neutral-300">Company Name</label>
                 <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-neutral-950 border border-neutral-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" placeholder="E.g. Google" />
@@ -251,11 +307,11 @@ export default function CompaniesPage() {
               </div>
 
               <div className="pt-4 flex items-center space-x-3">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-3 bg-neutral-800 text-white font-medium rounded-xl hover:bg-neutral-700 transition-colors">
+                <button type="button" onClick={closeModals} className="flex-1 py-3 bg-neutral-800 text-white font-medium rounded-xl hover:bg-neutral-700 transition-colors">
                   Cancel
                 </button>
                 <button type="submit" disabled={isSubmitting} className="flex-1 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-70 flex items-center justify-center">
-                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Save Company"}
+                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (editingCompany ? "Update Company" : "Save Company")}
                 </button>
               </div>
             </form>
