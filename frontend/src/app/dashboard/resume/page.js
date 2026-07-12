@@ -69,23 +69,23 @@ export default function ResumePage() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header>
-        <h1 className="text-3xl font-bold text-white tracking-tight">AI Resume Extraction</h1>
-        <p className="text-neutral-400 mt-2">Upload your resume and let AI extract your profile data automatically.</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">AI Resume Extraction</h1>
+        <p className="text-gray-500 dark:text-neutral-400 mt-2">Upload your resume and let AI extract your profile data automatically.</p>
       </header>
 
       {!resumeData ? (
-        <div className="bg-neutral-900/50 border-2 border-dashed border-neutral-800 rounded-3xl p-12 text-center backdrop-blur-xl transition-colors hover:border-neutral-700 hover:bg-neutral-900/80">
-          <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="bg-white dark:bg-neutral-900/50 border-2 border-dashed border-gray-300 dark:border-neutral-800 rounded-3xl p-12 text-center shadow-sm dark:shadow-none dark:backdrop-blur-xl transition-colors hover:border-gray-400 dark:hover:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-900/80">
+          <div className="w-20 h-20 bg-blue-50 dark:bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
             {isUploading ? (
-              <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
+              <Loader2 className="w-10 h-10 text-blue-500 dark:text-blue-400 animate-spin" />
             ) : (
-              <UploadCloud className="w-10 h-10 text-blue-400" />
+              <UploadCloud className="w-10 h-10 text-blue-500 dark:text-blue-400" />
             )}
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
             {isUploading ? "Extracting Data using AI..." : "Upload your resume (PDF)"}
           </h3>
-          <p className="text-neutral-400 mb-8 max-w-sm mx-auto">
+          <p className="text-gray-500 dark:text-neutral-400 mb-8 max-w-sm mx-auto">
             {isUploading 
               ? "Gemini is analyzing your resume to extract skills, experience, and education."
               : "Drag and drop your PDF here, or click to browse. We'll automatically parse your details."}
@@ -95,7 +95,7 @@ export default function ResumePage() {
              <label className="cursor-pointer relative">
                <input type="file" className="hidden" onChange={handleUpload} accept=".pdf" disabled={isUploading} />
                <div className={`flex items-center px-6 py-3 rounded-xl font-medium transition-all ${
-                 isUploading ? "bg-neutral-800 text-neutral-500 cursor-not-allowed" : "bg-white text-black hover:bg-neutral-200"
+                 isUploading ? "bg-gray-100 dark:bg-neutral-800 text-gray-400 dark:text-neutral-500 cursor-not-allowed" : "bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-neutral-200"
                }`}>
                  <Sparkles className="w-5 h-5 mr-2" />
                  {isUploading ? "Processing..." : "Select PDF File"}
@@ -106,69 +106,69 @@ export default function ResumePage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 space-y-6">
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6 text-center backdrop-blur-xl">
-               <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                 <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+            <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-2xl p-6 text-center dark:backdrop-blur-xl shadow-sm dark:shadow-none">
+               <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                 <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
                </div>
-               <h3 className="text-xl font-bold text-white mb-1">Extraction Complete</h3>
-               <p className="text-sm text-emerald-400/80">AI successfully parsed your details</p>
+               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Extraction Complete</h3>
+               <p className="text-sm text-emerald-700 dark:text-emerald-400/80">AI successfully parsed your details</p>
                
                <button 
                 onClick={() => setResumeData(null)}
-                className="mt-6 w-full px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-sm transition-colors">
+                className="mt-6 w-full px-4 py-2 bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-900 dark:text-white rounded-xl text-sm transition-colors font-medium">
                  Upload New Resume
                </button>
             </div>
             
-            <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 backdrop-blur-xl">
-              <h4 className="font-bold text-white mb-4 flex items-center"><FileText className="w-5 h-5 mr-2 text-blue-400"/> Contact Info</h4>
+            <div className="bg-white dark:bg-neutral-900/50 border border-gray-200 dark:border-neutral-800 rounded-2xl p-6 dark:backdrop-blur-xl shadow-sm dark:shadow-none">
+              <h4 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center"><FileText className="w-5 h-5 mr-2 text-blue-500 dark:text-blue-400"/> Contact Info</h4>
               <div className="space-y-3 text-sm">
                 <div>
-                  <p className="text-neutral-500">Full Name</p>
-                  <p className="text-white font-medium">{resumeData.name}</p>
+                  <p className="text-gray-500 dark:text-neutral-500">Full Name</p>
+                  <p className="text-gray-900 dark:text-white font-medium">{resumeData.name}</p>
                 </div>
                 <div>
-                  <p className="text-neutral-500">Email</p>
-                  <p className="text-white font-medium">{resumeData.email}</p>
+                  <p className="text-gray-500 dark:text-neutral-500">Email</p>
+                  <p className="text-gray-900 dark:text-white font-medium">{resumeData.email}</p>
                 </div>
                 <div>
-                  <p className="text-neutral-500">Phone</p>
-                  <p className="text-white font-medium">{resumeData.phone}</p>
+                  <p className="text-gray-500 dark:text-neutral-500">Phone</p>
+                  <p className="text-gray-900 dark:text-white font-medium">{resumeData.phone}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 backdrop-blur-xl mt-6">
-              <h4 className="font-bold text-white mb-4 flex items-center">Social Links</h4>
+            <div className="bg-white dark:bg-neutral-900/50 border border-gray-200 dark:border-neutral-800 rounded-2xl p-6 dark:backdrop-blur-xl mt-6 shadow-sm dark:shadow-none">
+              <h4 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center">Social Links</h4>
               <div className="space-y-4 text-sm">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-neutral-400">GitHub</label>
+                  <label className="text-xs font-medium text-gray-500 dark:text-neutral-400">GitHub</label>
                   <input
                     type="url"
                     value={github}
                     onChange={(e) => setGithub(e.target.value)}
                     placeholder="https://github.com/..."
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                    className="w-full bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-neutral-400">LinkedIn</label>
+                  <label className="text-xs font-medium text-gray-500 dark:text-neutral-400">LinkedIn</label>
                   <input
                     type="url"
                     value={linkedin}
                     onChange={(e) => setLinkedin(e.target.value)}
                     placeholder="https://linkedin.com/in/..."
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                    className="w-full bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-neutral-400">Portfolio</label>
+                  <label className="text-xs font-medium text-gray-500 dark:text-neutral-400">Portfolio</label>
                   <input
                     type="url"
                     value={portfolio}
                     onChange={(e) => setPortfolio(e.target.value)}
                     placeholder="https://yourportfolio.com"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                    className="w-full bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                   />
                 </div>
                 <button
@@ -184,7 +184,7 @@ export default function ResumePage() {
                     }
                   }}
                   disabled={isUpdatingLinks}
-                  className="w-full mt-4 flex items-center justify-center px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
+                  className="w-full mt-4 flex items-center justify-center px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white dark:bg-neutral-800 dark:hover:bg-neutral-700 rounded-xl font-medium transition-colors disabled:opacity-50"
                 >
                   {isUpdatingLinks ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                   {isUpdatingLinks ? "Saving..." : "Save Links"}
@@ -194,22 +194,22 @@ export default function ResumePage() {
           </div>
           
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 backdrop-blur-xl">
-               <h4 className="font-bold text-white mb-4">Skills</h4>
+            <div className="bg-white dark:bg-neutral-900/50 border border-gray-200 dark:border-neutral-800 rounded-2xl p-6 dark:backdrop-blur-xl shadow-sm dark:shadow-none">
+               <h4 className="font-bold text-gray-900 dark:text-white mb-4">Skills</h4>
                <div className="flex flex-wrap gap-2">
                  {resumeData.skills.map((skill, i) => (
-                   <span key={i} className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full text-sm">
+                   <span key={i} className="px-3 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 rounded-full text-sm">
                      {skill}
                    </span>
                  ))}
                </div>
             </div>
 
-            <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 backdrop-blur-xl">
-               <h4 className="font-bold text-white mb-4">Desired Roles</h4>
+            <div className="bg-white dark:bg-neutral-900/50 border border-gray-200 dark:border-neutral-800 rounded-2xl p-6 dark:backdrop-blur-xl shadow-sm dark:shadow-none">
+               <h4 className="font-bold text-gray-900 dark:text-white mb-4">Desired Roles</h4>
                <div className="flex flex-wrap gap-2 mb-4">
                  {desiredRoles.map((role, i) => (
-                   <span key={i} className="px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full text-sm flex items-center">
+                   <span key={i} className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 rounded-full text-sm flex items-center">
                      {role}
                      <button 
                       onClick={async () => {
@@ -227,10 +227,10 @@ export default function ResumePage() {
                           setIsUpdatingRoles(false);
                         }
                       }} 
-                      className="ml-2 text-indigo-400 hover:text-white">&times;</button>
+                      className="ml-2 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-white">&times;</button>
                    </span>
                  ))}
-                 {desiredRoles.length === 0 && <span className="text-neutral-500 text-sm">No desired roles added yet.</span>}
+                 {desiredRoles.length === 0 && <span className="text-gray-500 dark:text-neutral-500 text-sm">No desired roles added yet.</span>}
                </div>
                <div className="flex gap-2">
                  <input
@@ -256,7 +256,7 @@ export default function ResumePage() {
                      }
                    }}
                    placeholder="e.g. Frontend Developer"
-                   className="flex-1 bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                   className="flex-1 bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl px-4 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                  />
                  <button 
                    onClick={async () => {
@@ -278,22 +278,22 @@ export default function ResumePage() {
                      }
                    }}
                    disabled={isUpdatingRoles}
-                   className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-sm transition-colors disabled:opacity-50"
+                   className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white dark:bg-neutral-800 dark:hover:bg-neutral-700 rounded-xl text-sm transition-colors disabled:opacity-50 font-medium"
                  >
                    {isUpdatingRoles ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
                  </button>
                </div>
             </div>
             
-            <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 backdrop-blur-xl">
-               <h4 className="font-bold text-white mb-4">Education</h4>
+            <div className="bg-white dark:bg-neutral-900/50 border border-gray-200 dark:border-neutral-800 rounded-2xl p-6 dark:backdrop-blur-xl shadow-sm dark:shadow-none">
+               <h4 className="font-bold text-gray-900 dark:text-white mb-4">Education</h4>
                <div className="space-y-6">
                  {resumeData.education.map((edu, i) => (
-                   <div key={i} className="relative pl-6 border-l-2 border-neutral-800 pb-2 last:pb-0">
-                     <div className="absolute w-3 h-3 bg-neutral-800 rounded-full -left-[7px] top-1.5 border-2 border-neutral-950"></div>
-                     <h5 className="font-bold text-white">{edu.degree}</h5>
-                     <p className="text-indigo-400 text-sm mt-1">{edu.institution}</p>
-                     <p className="text-neutral-500 text-sm mt-1">{edu.duration}</p>
+                   <div key={i} className="relative pl-6 border-l-2 border-gray-200 dark:border-neutral-800 pb-2 last:pb-0">
+                     <div className="absolute w-3 h-3 bg-gray-200 dark:bg-neutral-800 rounded-full -left-[7px] top-1.5 border-2 border-white dark:border-neutral-950"></div>
+                     <h5 className="font-bold text-gray-900 dark:text-white">{edu.degree}</h5>
+                     <p className="text-indigo-600 dark:text-indigo-400 text-sm mt-1">{edu.institution}</p>
+                     <p className="text-gray-500 dark:text-neutral-500 text-sm mt-1">{edu.duration}</p>
                    </div>
                  ))}
                </div>

@@ -6,7 +6,8 @@ import {
   getCompanyById,
   updateCompany,
   deleteCompany,
-  uploadCompaniesExcel
+  uploadCompaniesExcel,
+  updateBulkScoutStatus
 } from "../controllers/company.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
 
@@ -20,6 +21,7 @@ companyRoutes.post("/companies/upload", upload.single("excel"), uploadCompaniesE
 companyRoutes.post("/companies", createCompany);
 companyRoutes.get("/companies", getCompanies);
 companyRoutes.get("/companies/:id", getCompanyById);
+companyRoutes.put("/companies/bulk/scout", updateBulkScoutStatus);
 companyRoutes.put("/companies/:id", updateCompany);
 companyRoutes.delete("/companies/:id", deleteCompany);
 

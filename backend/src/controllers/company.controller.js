@@ -119,12 +119,44 @@ export const createCompany = async (req, res) => {
 
 export const getCompanies = async (req, res) => {
   try {
-    const companies = await CompanyModel.find({ userId: req.userId });
+    const { page = 1, limit = 10, search = "", pagination = "true" } = req.query;
+    
+    let query = { userId: req.userId };
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { industry: { $regex: search, $options: "i" } },
+        { location: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    if (pagination === "false") {
+      const companies = await CompanyModel.find(query).sort({ createdAt: -1 });
+      return successResponse(res, "Companies fetched successfully", { companies });
+    }
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    
+    const total = await CompanyModel.countDocuments(query);
+    const companies = await CompanyModel.find(query)
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .sort({ createdAt: -1 });
 
     return successResponse(
       res,
       "Companies fetched successfully",
-      companies
+      {
+        companies,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      }
     );
   } catch (error) {
     return errorResponse(res, error.message);
@@ -174,6 +206,25 @@ export const updateCompany = async (req, res) => {
       "Company updated successfully",
       company
     );
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+export const updateBulkScoutStatus = async (req, res) => {
+  try {
+    const { companyIds, isScoutEnabled } = req.body;
+    
+    if (!Array.isArray(companyIds)) {
+      return errorResponse(res, "companyIds must be an array", 400);
+    }
+
+    await CompanyModel.updateMany(
+      { _id: { $in: companyIds }, userId: req.userId },
+      { $set: { isScoutEnabled } }
+    );
+
+    return successResponse(res, "Companies updated successfully");
   } catch (error) {
     return errorResponse(res, error.message);
   }

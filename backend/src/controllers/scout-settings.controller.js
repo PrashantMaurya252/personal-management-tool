@@ -1,4 +1,5 @@
 import ScoutSettingsModel from "../model/scout-settings.model.js";
+import { runScoutForUser } from "../services/jobScout.service.js";
 import { successResponse, errorResponse } from "../utils/apiResponse.js";
 
 export const getScoutSettings = async (req, res) => {
@@ -36,6 +37,15 @@ export const updateScoutSettings = async (req, res) => {
     await settings.save();
 
     return successResponse(res, "Scout settings updated successfully", settings);
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+export const runManualScout = async (req, res) => {
+  try {
+    await runScoutForUser(req.userId);
+    return successResponse(res, "Job Scout ran successfully");
   } catch (error) {
     return errorResponse(res, error.message);
   }

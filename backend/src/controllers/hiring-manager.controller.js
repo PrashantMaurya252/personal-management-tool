@@ -1,4 +1,5 @@
 import HiringManagerModel from "../model/hiring-managers.js";
+import CompanyModel from "../model/company.model.js";
 import { successResponse, errorResponse } from "../utils/apiResponse.js";
 
 export const addHiringManager = async (req, res) => {
@@ -21,13 +22,55 @@ export const addHiringManager = async (req, res) => {
 
 export const getHiringManagers = async (req, res) => {
   try {
-    const managers = await HiringManagerModel.find({ userId: req.userId })
-      .populate("company");
+    const { page = 1, limit = 10, search = "", pagination = "true" } = req.query;
+    
+    let query = { userId: req.userId };
+
+    if (search) {
+      // Find matching companies to allow searching by company name
+      const matchingCompanies = await CompanyModel.find({ 
+        userId: req.userId, 
+        name: { $regex: search, $options: "i" } 
+      }).select('_id');
+      const companyIds = matchingCompanies.map(c => c._id);
+
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { role: { $regex: search, $options: "i" } },
+        { company: { $in: companyIds } }
+      ];
+    }
+
+    if (pagination === "false") {
+      const managers = await HiringManagerModel.find(query)
+        .populate("company")
+        .sort({ createdAt: -1 });
+      return successResponse(res, "Hiring managers fetched successfully", { managers });
+    }
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    
+    const total = await HiringManagerModel.countDocuments(query);
+    const managers = await HiringManagerModel.find(query)
+      .populate("company")
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .sort({ createdAt: -1 });
 
     return successResponse(
       res,
       "Hiring managers fetched successfully",
-      managers
+      {
+        managers,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      }
     );
   } catch (error) {
     return errorResponse(res, error.message);

@@ -74,7 +74,7 @@ const scrapeAndFilter = async (url, desiredRoles) => {
   }
 };
 
-const runScoutForUser = async (userId) => {
+export const runScoutForUser = async (userId) => {
   try {
     const resume = await ResumeModel.findOne({ userId });
     const desiredRoles = resume?.extractedData?.desiredRoles || [];
