@@ -4,218 +4,68 @@ dotenv.config()
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Groq from "groq-sdk";
 
-const emailId = process.env.USER_EMAIL;
-
-const trackingLinks = {
-  github: `${process.env.BACKEND_URL}/api/track/click/${emailId}/github`,
-  linkedin: `${process.env.BACKEND_URL}/api/track/click/${emailId}/linkedin`,
-  portfolio: `${process.env.BACKEND_URL}/api/track/click/${emailId}/portfolio`,
-  resume: `${process.env.BACKEND_URL}/api/resume/download/${emailId}`,
-};
-
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY);
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-const MY_INFORMATION = `You are PM Bot, a friendly and concise AI assistant for giving response in json structure as below 
-{
- hrEmail:  ,
- hrName:  ,
- companyName: ,
- emailSubject: ,
- emailBody: 
-}.
+const getSystemPrompt = (resumeData) => {
+  const profileString = typeof resumeData === 'string' ? resumeData : JSON.stringify(resumeData, null, 2);
 
-Here is everything you know about Prashant:
-
----
-NAME: Prashant Kumar Maurya
-ROLE: Full Stack Developer — MERN — GenAI — LLM Integration — Node.js
-LOCATION: India
-EMAIL: prashantmaurya252@outlook.com
-PHONE: +91 6306315885
-GITHUB: [GitHub](https://github.com/PrashantMaurya252)
-LINKEDIN: [LinkedIn](https://www.linkedin.com/in/pkm252/)
-RESUME: [Download Resume](https://drive.google.com/file/d/18c8fuEe14hlbVS6mRResojlnsGf78nrt/view?usp=sharing)
-
-SUMMARY:
-Full Stack Developer with 2+ years of experience building scalable, production-grade web applications using the MERN stack and PostgreSQL. Experienced in designing secure authentication systems (JWT, OAuth2, RBAC), developing RESTful APIs, and implementing real-time features using Socket.io. Strong expertise in backend architecture, database optimization, and building complex workflows, audit systems, and cloud-integrated solutions (AWS, Azure, Stripe). Skilled in Generative AI including integrating LLMs using OpenAI and Gemini APIs, applying prompt engineering techniques, and building AI-powered features such as chatbots and intelligent automation systems.
-
-TECHNICAL SKILLS:
-- Languages: JavaScript (ES6+), TypeScript
-- Frontend: React.js, Next.js, Redux Toolkit, Tailwind CSS, Material UI, Framer Motion
-- Backend: Node.js, Express.js, REST API Design, Socket.io,Nest.js
-- Databases: PostgreSQL (Prisma), MongoDB (Mongoose)
-- Cloud & Tools: AWS (S3, EC2), Azure (OCR), Docker, Git, GitHub, Stripe, Firebase
-- AI / GenAI: LLM Integration, Prompt Engineering, OpenAI API, Gemini API, AI Chatbot Development, Context Injection, RAG Basics
-- Security: JWT, OAuth2, RBAC, Secure Cookies, Bcrypt
-
-CURRENTLY LEARNING:
-- Large Language Models (LLMs)
-- Advanced Prompt Engineering
-- Generative AI (GenAI)
-
-PROFESSIONAL EXPERIENCE:
-
-1. Full Stack Developer — Hiverift Softwares (Apr 2026 – Present)
-
-   - Architecting and developing scalable backend systems using NestJS, TypeScript, MongoDB, and Mongoose
-   - Leading backend development of a multi-vendor marketplace platform supporting 6 user roles and complex business workflows
-   - Independently designing and implementing backend architecture, database schemas, APIs, and core business modules
-   - Designed and implemented secure authentication and authorization using JWT, Auth Guards, Role Guards, and RBAC
-   - Developed Vendor Management, Influencer Management, Coupon Management, and Commission Tracking modules
-   - Built automated Vendor and Influencer payout systems based on configurable commission structures and sales slabs
-   - Implemented MongoDB transactions to ensure data consistency and atomicity across critical business operations
-   - Designed Cloudinary-based media management pipelines for scalable image and file storage
-   - Developed a production-grade E-commerce platform with product management, order management, cart, wishlist, and checkout workflows
-   - Integrated Razorpay payment gateway for secure online payments and transaction verification
-   - Implemented passwordless OTP-based authentication and notification systems using Nodemailer
-   - Designed reusable REST APIs and modular backend architecture following NestJS best practices and clean architecture principles
-   - Optimized database queries, indexing strategies, and API performance for production-scale workloads
-   - Collaborated with stakeholders to define marketplace workflows, service lifecycles, and scalable system architecture
-
-
-2. Full Stack Developer — Codenia Technologies LLP (Feb 2025 – March 2026)
-   - Delivered 4+ production-grade full stack applications in finance and insurance domains
-   - Independently built 3 complete projects from scratch within this role
-   - Engineered an Expense Management Platform with role-based workflows, approval automation, and audit trail tracking
-   - Designed and implemented secure auth systems using JWT, refresh tokens, OAuth2, and RBAC for multi-level user hierarchies
-   - Built and optimized RESTful APIs with Node.js and Express.js, improving API response time by 50%
-   - Structured backend architecture with middleware, validation layers, and centralized error handling, reducing debugging time by 60%
-   - Modeled scalable database schemas using PostgreSQL (Prisma) and MongoDB, improving query performance by 45% through indexing
-   - Integrated Generative AI features using OpenAI API to build AI-powered chatbot systems
-   - Implemented LLM-based workflows using prompt engineering for dynamic and context-aware responses
-   - Integrated Gemini API for contextual AI responses and automation
-   - Enabled document data extraction using Azure OCR services
-   - Developed real-time features using Socket.io for notifications and live updates
-   - Improved frontend performance reducing load time by 40%
-   - Organized codebase using modular architecture and reusable services, accelerating development speed by 30%
-
-3. Frontend Developer Intern — Virtual Cybertrons (Apr 2024 – Jan 2025)
-   - Developed reusable and modular UI components for 2+ web applications using Next.js, React.js, and Tailwind CSS
-   - Ensured responsive, accessible, and cross-browser compatible UI
-   - Managed global state efficiently using React Context API
-   - Integrated 25+ APIs with optimized data fetching and caching strategies, reducing network requests by 30%
-   - Applied performance optimization including code-splitting, lazy loading, and image optimization
-
-PERSONAL PROJECTS:
-
-1. Full Stack E-Commerce Platform
-   - Tech: Next.js, Node.js, Express.js, PostgreSQL, Prisma, Redux Toolkit, Stripe, TypeScript
-   - Engineered a full-stack e-commerce platform deployed on Vercel (frontend) and Render (backend)
-   - Designed scalable PostgreSQL schema with Prisma for inventory, orders, coupons, and payment tracking
-   - Built secure JWT auth with Google OAuth integration and HTTP-only cookies
-   - Implemented Stripe Payment Intents with webhook-based transaction lifecycle handling
-   - Advanced product discovery with filtering by category, price, ratings
-   - Added structured logging (Morgan + Winston); integrated Nodemailer for transactional emails
-   - Links: [GitHub](https://github.com/PrashantMaurya252/e-commerce-with-postgre-and-prisma) | [Live Demo](https://e-commerce-with-postgre-and-prisma.vercel.app/user/home)
-
-2. Instagram Clone
-   - Tech: MERN Stack, Socket.io, Redux Toolkit, Cloudinary
-   - Built a full-stack social networking platform
-   - Designed RESTful APIs for profiles, posts, comments, likes, bookmarks, follow/unfollow
-   - Real-time chat and notifications using Socket.io with online/offline status
-   - Image optimization pipeline with Cloudinary and Sharp, reduced image size by 60%
-   - Implemented infinite scroll pagination
-   - Links: [GitHub](https://github.com/PrashantMaurya252/instagram-clone) | [Live Demo](https://instagram-clone-awa2.onrender.com/login)
-
-3. MERN Blog Platform
-   - Tech: MERN Stack, Redux Toolkit, Vite, Firebase Storage
-   - Full-stack blogging platform with CRUD, draft/publish workflows, and pagination
-   - Admin dashboard with aggregated metrics, 30-day activity trends, and top-performing content analytics
-   - Full-text search and category-based filtering
-   - Role-based access control for Admin and user-level permissions
-   - Firebase Storage for image uploads
-   - Links: [GitHub](https://github.com/PrashantMaurya252/blog-app) | [Live Demo](https://mern-blog-m5rc.onrender.com/)
-
-ACHIEVEMENTS & CERTIFICATIONS:
-- Solved 100+ DSA problems on LeetCode and GeeksforGeeks
-- Built 8+ personal full-stack projects using MERN stack and modern web technologies
-- SQL and PostgreSQL: The Complete Developer's Guide – Udemy — [View Certificate](https://drive.google.com/file/d/1kepevrjs5d3_7_UyxtNr9a65kmhm3tNp/view?usp=sharing)
-- upGrad Full Stack Development Bootcamp – MERN Stack — [View Certificate](https://drive.google.com/file/d/1kepevrjs5d3_7_UyxtNr9a65kmhm3tNp/view?usp=sharing)
-
-EDUCATION:
-- Bachelor of Technology (B.Tech) in Electronics Engineering
-- Institute of Engineering and Rural Technology, Prayagraj, Uttar Pradesh
-- SGPA: 8.01
-
----
-
-
-`;
-
-
-const SYSTEM_PROMPT = `
+  return `
 You are an expert technical recruiter and career coach.
 
-You have access to Prashant's complete profile.
+You have access to the user's complete profile and resume data:
+
+---
+${profileString}
+---
 
 IMPORTANT RULES:
 
 1. Analyze the job description carefully.
 2. Extract company details from the job post.
-3. Compare required skills with Prashant's actual skills.
-4. ONLY mention skills, technologies, projects, and experiences that are relevant to the job.
-5. Never mention unrelated skills.
-6. If the role requires more experience than Prashant has, do NOT lie.
-7. Instead, highlight:
-   - Relevant projects
+3. Compare required skills with the user's ACTUAL skills.
+4. ONLY mention skills, technologies, projects, and experiences that are explicitly present in the user's resume data and are relevant to the job.
+5. NEVER mention unrelated skills.
+6. NEVER hallucinate or invent skills the user does not have.
+7. If the role requires more experience than the user has, do NOT lie.
+8. Instead, highlight:
+   - Relevant projects from their profile
    - Similar work experience
    - Ability to learn quickly
-   - Production-level work completed
 
 EMAIL RULES:
 
-1. Email should sound human and professional.
-2. Email should not look AI generated.
-3. Keep email between 200-350 words.
-4. Mention why Prashant is a strong fit.
-5. Highlight only matching experience.
-6. Mention relevant projects if applicable.
-7. Mention that resume is attached.
-8. Include contact information.
-
-If matchPercentage < 50:
-- Acknowledge missing skills honestly.
-- Emphasize transferable backend experience.
-- Highlight ability to learn quickly.
-- Do not claim expertise in missing technologies.
+1. Email should be CONCISE, direct, and highly professional.
+2. Get straight to the point about why the user is a great fit.
+3. Highlight only relevant experience and skills that match the job.
+4. Keep the email between 150-250 words. Do not ramble.
+5. Emphasize transferable experience and ability to learn quickly if there's a skill mismatch.
+6. Include contact information based on their resume data.
 
 SIGNATURE FORMAT:
 
 Best Regards,
-Prashant Kumar Maurya
-Full Stack Developer
+[User's Name from Resume]
+[User's Title from Resume]
 
-Phone: +91 6306315885
-Email: prashantmaurya252@outlook.com
+Phone: [User's Phone from Resume]
+Email: [User's Email from Resume]
 
-Resume:
-Attached with this email.
+IMPORTANT TRACKING LINKS:
 
-IMPORTANT:
+You must conditionally append links to the signature ONLY IF they exist in the user's resume data. Use the exact placeholders below:
 
-Do not use direct URLs.
-
-Use the following placeholders in the email:
-
-{{GITHUB_LINK}}
-{{LINKEDIN_LINK}}
-{{PORTFOLIO_LINK}}
-{{RESUME_LINK}}
-
-Example:
-
-GitHub: {{GITHUB_LINK}}
-LinkedIn: {{LINKEDIN_LINK}}
-Portfolio: {{PORTFOLIO_LINK}}
+${resumeData.github ? "GitHub: {{GITHUB_LINK}}" : ""}
+${resumeData.linkedin ? "LinkedIn: {{LINKEDIN_LINK}}" : ""}
+${resumeData.portfolio ? "Portfolio: {{PORTFOLIO_LINK}}" : ""}
 Resume: {{RESUME_LINK}}
 
-Generate professional email content using these placeholders.
+Do not include social links if they are not in the resume data.
 
-Return ONLY valid JSON.
+Return ONLY valid JSON. Do not include markdown formatting like \`\`\`json.
 
 {
   "companyName":"",
@@ -233,8 +83,7 @@ Return ONLY valid JSON.
   "emailBody":""
 }
 `;
-
-
+};
 
 const generateWithGemini = async (prompt) => {
   const model = genAI.getGenerativeModel({
@@ -242,7 +91,6 @@ const generateWithGemini = async (prompt) => {
   });
 
   const result = await model.generateContent(prompt);
-
   const text = result.response.text();
 
   return extractJson(text);
@@ -251,23 +99,24 @@ const generateWithGemini = async (prompt) => {
 const extractJson = (text) => {
   try {
     const cleaned = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
+      .replace(/\`\`\`json/g, "")
+      .replace(/\`\`\`/g, "")
       .trim();
-
-    const parsed = JSON.parse(cleaned);
 
     return JSON.parse(cleaned);
   } catch (error) {
-    throw new Error("Failed to parse AI response");
+    console.error("AI Output:", text);
+    throw new Error("Failed to parse AI response into JSON");
   }
 };
 
 export const generateEmailFromLinkedinPost = async (
-  linkedinJobPost
+  linkedinJobPost,
+  resumeData
 ) => {
-  const prompt = `
-${SYSTEM_PROMPT}
+  const systemPrompt = getSystemPrompt(resumeData);
+
+  const prompt = `${systemPrompt}
 
 LINKEDIN JOB POST:
 
@@ -277,13 +126,7 @@ ${linkedinJobPost}
   try {
     return await generateWithGemini(prompt);
   } catch (error) {
-    if (
-      error.message.includes("429") ||
-      error.message.includes("quota")
-    ) {
-      return await generateWithGroq(prompt);
-    }
-
+    console.error("Gemini failed:", error);
     throw error;
   }
 };

@@ -20,7 +20,7 @@ app.use(cors(
 app.use(cookieParser())
 
 app.use("/api/v1",authRoutes)
-app.use("/api/v1",jobEmailRoutes)
+app.use("/api/v1/emails", jobEmailRoutes)
 app.use("/api/v1",companyRoutes)
 app.use("/api/v1",hiringManagerRoutes)
 app.use("/api/v1",resumeRoutes)

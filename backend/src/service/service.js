@@ -5,6 +5,7 @@ export const sendEmail = async ({
   email,
   subject,
   body,
+  attachments = []
 }) => {
   try {
     const html = generateEmailTemplate({
@@ -17,6 +18,7 @@ export const sendEmail = async ({
       to: email,
       subject,
       html,
+      attachments
     });
 
     return {

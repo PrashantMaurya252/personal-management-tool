@@ -18,6 +18,9 @@ export const uploadResume = async (req, res) => {
       - "name": string
       - "email": string
       - "phone": string
+      - "github": string (url if present)
+      - "linkedin": string (url if present)
+      - "portfolio": string (url if present)
       - "skills": array of strings
       - "experience": array of objects { "company": string, "role": string, "duration": string }
       - "education": array of objects { "institution": string, "degree": string, "duration": string }
@@ -81,6 +84,40 @@ export const getResume = async (req, res) => {
     }
     return successResponse(res, "Resume fetched successfully", resume);
   } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+export const updateResumeData = async (req, res) => {
+  try {
+    const { github, linkedin, portfolio, desiredRoles, experience } = req.body;
+    const resume = await ResumeModel.findOne({ userId: req.userId });
+    
+    if (!resume) {
+      return errorResponse(res, "Resume not found", 404);
+    }
+    
+    // Ensure extractedData exists
+    if (!resume.extractedData) {
+      resume.extractedData = {};
+    }
+
+    resume.extractedData = {
+      ...resume.extractedData,
+      github: github !== undefined ? github : resume.extractedData.github,
+      linkedin: linkedin !== undefined ? linkedin : resume.extractedData.linkedin,
+      portfolio: portfolio !== undefined ? portfolio : resume.extractedData.portfolio,
+      desiredRoles: desiredRoles !== undefined ? desiredRoles : resume.extractedData.desiredRoles || [],
+      experience: experience !== undefined ? experience : resume.extractedData.experience || [],
+    };
+    
+    // Tell mongoose that mixed type was modified
+    resume.markModified('extractedData');
+
+    await resume.save();
+    return successResponse(res, "Resume data updated successfully", resume);
+  } catch (error) {
+    console.error("Update Resume Data Error:", error);
     return errorResponse(res, error.message);
   }
 };

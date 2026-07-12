@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { uploadResume, getResume } from "../controllers/resume.controller.js";
+import { uploadResume, getResume, updateResumeData } from "../controllers/resume.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
 
 const resumeRoutes = express.Router();
@@ -13,5 +13,6 @@ resumeRoutes.use("/resume", protectRoute);
 
 resumeRoutes.post("/resume/upload", upload.single("resume"), uploadResume);
 resumeRoutes.get("/resume", getResume);
+resumeRoutes.put("/resume/data", updateResumeData);
 
 export default resumeRoutes;

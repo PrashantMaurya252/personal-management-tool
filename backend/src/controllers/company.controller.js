@@ -1,5 +1,50 @@
 import CompanyModel from "../model/company.model.js";
 import { successResponse, errorResponse } from "../utils/apiResponse.js";
+import * as xlsx from "xlsx";
+
+export const uploadCompaniesExcel = async (req, res) => {
+  try {
+    if (!req.file) {
+      return errorResponse(res, "No Excel file uploaded", 400);
+    }
+
+    // Read the Excel file buffer
+    const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+
+    // Convert sheet to JSON array
+    const rawData = xlsx.utils.sheet_to_json(sheet);
+
+    // Map data to match the schema
+    const companiesToInsert = rawData.map((row) => ({
+      userId: req.userId,
+      name: row.name || row.Name || row.Company || "Unknown",
+      website: row.website || row.Website || "",
+      linkedinUrl: row.linkedinUrl || row.Linkedin || "",
+      industry: row.industry || row.Industry || "",
+      location: row.location || row.Location || "",
+      companySize: row.companySize || row.Size || undefined,
+      notes: row.notes || row.Notes || "",
+      status: row.status ? row.status.toLowerCase() : "not_applied",
+      companyType: row.companyType || row.Type || undefined,
+      companyCareerPage: row.companyCareerPage || row.CareerPage || "",
+    }));
+
+    // Save to database
+    const insertedCompanies = await CompanyModel.insertMany(companiesToInsert);
+
+    return successResponse(
+      res,
+      `${insertedCompanies.length} companies uploaded successfully`,
+      insertedCompanies,
+      201
+    );
+  } catch (error) {
+    console.error("Error uploading companies excel:", error);
+    return errorResponse(res, error.message);
+  }
+};
 
 export const createCompany = async (req, res) => {
   try {
