@@ -27,7 +27,7 @@ export const getGeneratedAiResponse = async (req, res) => {
 
 export const sendtoHR = async (req, res) => {
   try {
-    const { email, subject, body, companyName, hrName, profile } = req.body;
+    const { email, subject, body, companyName, hrName, profile, scheduledAt } = req.body;
     
     if (!email || !subject || !body) {
       return res.status(400).json({ success: false, message: "Email, Subject and Body are required" });
@@ -84,13 +84,40 @@ export const sendtoHR = async (req, res) => {
     const newEmail = await EmailModel.create(emailData);
 
     let attachments = [];
+    let savedEmailAttachments = [];
+
     if (req.file) {
       attachments.push({
         filename: req.file.originalname,
         content: req.file.buffer
       });
+      if (scheduledAt) {
+        savedEmailAttachments = [{
+          fileName: req.file.originalname,
+          fileData: req.file.buffer
+        }];
+      }
+    } else {
+      // Fetch default resume from Cloudinary
+      const defaultResume = await ResumeModel.findOne({ userId: req.userId, isDefault: true });
+      if (defaultResume && defaultResume.url) {
+        attachments.push({
+          filename: defaultResume.fileName || "resume.pdf",
+          href: defaultResume.url
+        });
+        if (scheduledAt) {
+           savedEmailAttachments = [{
+             fileName: defaultResume.fileName || "resume.pdf",
+             fileUrl: defaultResume.url
+           }];
+        }
+      }
     }
 
+    if (savedEmailAttachments.length > 0) {
+       newEmail.attachments = savedEmailAttachments;
+       await newEmail.save();
+    }
     const emailIdStr = newEmail._id.toString();
     const trackingLinks = {
       github: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/github`,
@@ -109,6 +136,11 @@ export const sendtoHR = async (req, res) => {
 
     const pixelUrl = `${process.env.BACKEND_URL}/api/v1/emails/track/open/${emailIdStr}`;
     finalBody += `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;" />`;
+
+
+    if (scheduledAt) {
+      return res.status(200).json({ success: true, message: "Email Scheduled Successfully", data: newEmail });
+    }
 
     const result = await sendEmail({
       email,
@@ -202,5 +234,124 @@ export const getEmailHistory = async (req, res) => {
   } catch (error) {
     console.error("Fetch Emails Error:", error);
     return res.status(500).json({ success: false, message: "Failed to fetch emails" });
+  }
+};
+
+export const bulkEnquiry = async (req, res) => {
+  try {
+    const { managerIds, subject, body, scheduledAt } = req.body;
+    
+    if (!managerIds || !managerIds.length || !subject || !body) {
+      return res.status(400).json({ success: false, message: "Manager IDs, Subject and Body are required" });
+    }
+
+    const managers = await HiringManagerModel.find({ _id: { $in: JSON.parse(managerIds) }, userId: req.userId }).populate('company');
+    
+    let fileAttachment = null;
+    let mailAttachments = [];
+    if (req.file) {
+      fileAttachment = {
+        fileName: req.file.originalname,
+        fileData: req.file.buffer
+      };
+      mailAttachments.push({
+        filename: req.file.originalname,
+        content: req.file.buffer
+      });
+    }
+
+    const createdEmails = [];
+    for (const hr of managers) {
+      const hrName = hr.name;
+      const compName = hr.company?.name || "your company";
+      const emailBody = body.replace(/\{\{hrName\}\}/g, hrName).replace(/\{\{companyName\}\}/g, compName);
+      const emailSubject = subject.replace(/\{\{hrName\}\}/g, hrName).replace(/\{\{companyName\}\}/g, compName);
+      
+      const emailData = {
+        userId: req.userId,
+        purpose: "Enquiry",
+        company: hr.company?._id,
+        recipientEmail: hr._id,
+        profile: "Enquiry",
+        generatedSubject: emailSubject,
+        generatedBody: emailBody,
+        status: scheduledAt ? "scheduled" : "draft",
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
+        attachments: fileAttachment ? [fileAttachment] : []
+      };
+
+      const newEmail = await EmailModel.create(emailData);
+      
+      if (!scheduledAt) {
+        // Send immediately
+        const emailIdStr = newEmail._id.toString();
+        const trackingLinks = {
+          github: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/github`,
+          linkedin: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/linkedin`,
+          portfolio: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/portfolio`,
+          resume: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/resume`,
+        };
+
+        let finalBody = emailBody
+          .replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${trackingLinks.github}" target="_blank">GitHub Profile</a>`)
+          .replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${trackingLinks.linkedin}" target="_blank">LinkedIn Profile</a>`)
+          .replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${trackingLinks.portfolio}" target="_blank">Portfolio</a>`)
+          .replace(/\{\{RESUME_LINK\}\}/g, `<a href="${trackingLinks.resume}" target="_blank">Download Resume</a>`);
+
+        finalBody = finalBody.replace(/\n/g, "<br>");
+        const pixelUrl = `${process.env.BACKEND_URL}/api/v1/emails/track/open/${emailIdStr}`;
+        finalBody += `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;" />`;
+
+        const result = await sendEmail({
+          email: hr.email,
+          subject: emailSubject,
+          body: finalBody,
+          attachments: mailAttachments
+        });
+
+        if (result.success) {
+          await EmailModel.findByIdAndUpdate(newEmail._id, { status: "sent", sentAt: new Date() });
+        } else {
+          await EmailModel.findByIdAndUpdate(newEmail._id, { status: "failed" });
+        }
+      }
+      createdEmails.push(newEmail);
+    }
+
+    res.status(200).json({ success: true, message: scheduledAt ? "Enquiries Scheduled" : "Enquiries Sent", data: createdEmails });
+  } catch (error) {
+    console.error("Bulk Enquiry Error:", error);
+    return res.status(500).json({ message: "Internal server error", success: false });
+  }
+};
+
+export const updateScheduledEmail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { subject, body, scheduledAt } = req.body;
+    
+    const email = await EmailModel.findOne({ _id: id, userId: req.userId, status: "scheduled" });
+    if (!email) return res.status(404).json({ success: false, message: "Scheduled email not found" });
+
+    if (subject) email.generatedSubject = subject;
+    if (body) email.generatedBody = body;
+    if (scheduledAt) email.scheduledAt = new Date(scheduledAt);
+
+    await email.save();
+    res.status(200).json({ success: true, message: "Email updated successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error updating email" });
+  }
+};
+
+export const cancelScheduledEmail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const email = await EmailModel.findOneAndDelete({ _id: id, userId: req.userId, status: "scheduled" });
+    if (!email) return res.status(404).json({ success: false, message: "Scheduled email not found" });
+
+    res.status(200).json({ success: true, message: "Scheduled email cancelled" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error cancelling email" });
   }
 };

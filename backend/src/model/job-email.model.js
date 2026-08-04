@@ -40,10 +40,11 @@ const emailSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["draft", "sent", "failed"],
+      enum: ["draft", "scheduled", "sent", "failed"],
       default: "draft",
     },
 
+    scheduledAt: Date,
     sentAt: Date,
 
     tracking: {
@@ -72,6 +73,7 @@ const emailSchema = new mongoose.Schema(
       {
         fileName: String,
         fileUrl: String,
+        fileData: Buffer,
       },
     ],
   },

@@ -14,6 +14,19 @@ const ResumeSchema = new Schema(
     rawText: {
       type: String, // Store raw PDF text
     },
+    url: {
+      type: String,
+    },
+    publicId: {
+      type: String
+    },
+    isDefault: {
+      type: Boolean,
+      default: false
+    },
+    fileName: {
+      type: String
+    }
   },
   {
     timestamps: true,
