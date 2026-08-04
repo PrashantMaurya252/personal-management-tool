@@ -21,13 +21,28 @@ const HiringManagerSchema = new mongoose.Schema(
 
     email: {
       type: String,
-      required: true,
       lowercase: true,
       trim: true,
     },
 
-    phoneNumber: {
+    phone: {
       type: String,
+      trim: true,
+    },
+    
+    linkedinUrl: {
+      type: String,
+      trim: true,
+    },
+
+    role: {
+      type: String,
+      trim: true,
+    },
+
+    status: {
+      type: String,
+      default: "active",
       trim: true,
     },
   },

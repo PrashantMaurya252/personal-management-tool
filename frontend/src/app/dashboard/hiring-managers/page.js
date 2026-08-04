@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Plus, Search, MoreVertical, UserCircle, X, Loader2, Pencil, Trash2 } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Plus, Search, MoreVertical, UserCircle, X, Loader2, Pencil, Trash2, Upload, Download } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "react-hot-toast";
 
@@ -11,6 +11,8 @@ export default function HiringManagersPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingManager, setEditingManager] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -101,6 +103,58 @@ export default function HiringManagersPage() {
     }
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.match(/\.(xlsx|xls|csv)$/)) {
+      toast.error("Please upload a valid Excel or CSV file");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("excel", file);
+
+    setIsUploading(true);
+    try {
+      const response = await axiosInstance.post("/hiring-managers/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.data.success) {
+        toast.success(response.data.message || "Hiring managers uploaded successfully");
+        fetchManagers();
+        fetchCompanies(); // Because new companies might have been created
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error(error.response?.data?.message || "Failed to upload file");
+    } finally {
+      setIsUploading(false);
+      // Reset the input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleDownloadDemo = () => {
+    const csvContent = "data:text/csv;charset=utf-unused,\n" 
+      + "name,company,email,phone,linkedinUrl,role\n"
+      + "John Doe,Acme Corp,john@acmecorp.com,+1 234 567 8900,https://linkedin.com/in/johndoe,Senior Technical Recruiter\n"
+      + "Jane Smith,Globex,jane.smith@globex.com,,https://linkedin.com/in/janesmith,HR Manager\n";
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "hiring_managers_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const openEditModal = (manager) => {
     setEditingManager(manager);
     setFormData({
@@ -126,13 +180,42 @@ export default function HiringManagersPage() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Hiring Managers</h1>
           <p className="text-gray-500 dark:text-neutral-400 mt-2">Keep track of your HR contacts and hiring managers.</p>
         </div>
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Add Manager
-        </button>
+        <div className="flex items-center space-x-3">
+          <button 
+            onClick={handleDownloadDemo}
+            className="flex items-center px-4 py-2 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-xl font-medium transition-colors"
+            title="Download demo CSV format"
+          >
+            <Download className="w-5 h-5 mr-2" />
+            Demo Format
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept=".xlsx, .xls, .csv"
+            className="hidden"
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="flex items-center px-4 py-2 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-xl font-medium transition-colors disabled:opacity-70"
+          >
+            {isUploading ? (
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            ) : (
+              <Upload className="w-5 h-5 mr-2" />
+            )}
+            Upload Excel
+          </button>
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add Manager
+          </button>
+        </div>
       </header>
 
       <div className="bg-white dark:bg-neutral-900/50 border border-gray-200 dark:border-neutral-800 rounded-2xl dark:backdrop-blur-xl overflow-hidden shadow-sm dark:shadow-none">

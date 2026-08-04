@@ -1,7 +1,8 @@
 import bcrypt from "bcrypt";
 import UserModel from "../model/user.model.js";
 import jwt from "jsonwebtoken";
-
+import nodemailer from "nodemailer";
+import crypto from "crypto";
 export const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -85,3 +86,82 @@ export const logout = async(req,res)=>{
       .json({ success: false, message: "Internal Server Error" });
     }
 }
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    const user = await UserModel.findOne({ email });
+    if (!user) {
+      // Return true anyway to prevent email enumeration, but for now we'll send 404 for UX
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    user.otp = otp;
+    user.otpExpiresAt = otpExpiresAt;
+    await user.save();
+
+    // Send email
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.MAIL_USER,
+      to: email,
+      subject: "Password Reset OTP",
+      text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return res.status(200).json({ success: true, message: "OTP sent to your email" });
+  } catch (error) {
+    console.log("forgotPassword error", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ success: false, message: "Email, OTP, and New Password are required" });
+    }
+
+    const user = await UserModel.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (user.otp !== otp) {
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
+    if (new Date() > user.otpExpiresAt) {
+      return res.status(400).json({ success: false, message: "OTP has expired" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    user.otp = undefined;
+    user.otpExpiresAt = undefined;
+    await user.save();
+
+    return res.status(200).json({ success: true, message: "Password reset successfully" });
+  } catch (error) {
+    console.log("resetPassword error", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};

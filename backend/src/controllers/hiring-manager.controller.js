@@ -1,7 +1,7 @@
 import HiringManagerModel from "../model/hiring-managers.js";
 import CompanyModel from "../model/company.model.js";
 import { successResponse, errorResponse } from "../utils/apiResponse.js";
-
+import * as xlsx from "xlsx";
 export const addHiringManager = async (req, res) => {
   try {
     const hiringManager = await HiringManagerModel.create({
@@ -145,6 +145,83 @@ export const deleteHiringManager = async (req, res) => {
       "Hiring manager deleted successfully"
     );
   } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+export const uploadHiringManagersExcel = async (req, res) => {
+  try {
+    if (!req.file) {
+      return errorResponse(res, "No Excel file uploaded", 400);
+    }
+
+    const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rawData = xlsx.utils.sheet_to_json(sheet);
+
+    let addedCount = 0;
+    let skippedCount = 0;
+
+    for (const row of rawData) {
+      const companyName = (row.company || row.Company || "").toString().trim();
+      if (!companyName) continue; // Skip if no company name
+
+      // 1. Find or create company (lowercase comparison)
+      let company = await CompanyModel.findOne({ 
+        userId: req.userId, 
+        name: companyName.toLowerCase() 
+      });
+
+      if (!company) {
+        company = await CompanyModel.create({
+          userId: req.userId,
+          name: companyName.toLowerCase(),
+          // You can extract other fields if present in the Excel sheet
+          industry: row.industry || row.Industry || "",
+          location: row.location || row.Location || "",
+          status: "not_applied"
+        });
+      }
+
+      // 2. Extract manager details
+      const managerName = (row.name || row.Name || "").toString().trim();
+      if (!managerName) continue; // Skip if no manager name
+
+      // 3. Check if manager exists for this company
+      const existingManager = await HiringManagerModel.findOne({
+        userId: req.userId,
+        company: company._id,
+        name: managerName
+      });
+
+      if (existingManager) {
+        skippedCount++;
+        continue;
+      }
+
+      // 4. Create new manager
+      await HiringManagerModel.create({
+        userId: req.userId,
+        company: company._id,
+        name: managerName,
+        email: row.email || row.Email || "",
+        phone: row.phone || row.Phone || "",
+        linkedinUrl: row.linkedinUrl || row.Linkedin || row.LinkedIn || "",
+        role: row.role || row.Role || "",
+        status: "active"
+      });
+      addedCount++;
+    }
+
+    return successResponse(
+      res,
+      `Processed hiring managers: ${addedCount} added, ${skippedCount} skipped (already exists).`,
+      null,
+      201
+    );
+  } catch (error) {
+    console.error("Error uploading hiring managers excel:", error);
     return errorResponse(res, error.message);
   }
 };

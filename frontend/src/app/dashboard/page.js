@@ -18,13 +18,13 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
       try {
         const [companiesRes, managersRes, resumeRes] = await Promise.all([
-          axiosInstance.get("/companies").catch(() => ({ data: { data: [] } })),
-          axiosInstance.get("/hiring-managers").catch(() => ({ data: { data: [] } })),
+          axiosInstance.get("/companies?pagination=false").catch(() => ({ data: { data: { companies: [] } } })),
+          axiosInstance.get("/hiring-managers?pagination=false").catch(() => ({ data: { data: { managers: [] } } })),
           axiosInstance.get("/resume").catch(() => ({ data: { data: null } }))
         ]);
 
-        const companies = companiesRes.data?.data || [];
-        const managers = managersRes.data?.data || [];
+        const companies = companiesRes.data?.data?.companies || [];
+        const managers = managersRes.data?.data?.managers || [];
         const resume = resumeRes.data?.data;
 
         setData({
