@@ -119,7 +119,7 @@ export const createCompany = async (req, res) => {
 
 export const getCompanies = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "", pagination = "true" } = req.query;
+    const { page = 1, limit = 10, search = "", pagination = "true", sort = "latest" } = req.query;
     
     let query = { userId: req.userId };
 
@@ -131,8 +131,13 @@ export const getCompanies = async (req, res) => {
       ];
     }
 
+    let sortObj = { createdAt: -1 };
+    if (sort === 'oldest') sortObj = { createdAt: 1 };
+    else if (sort === 'az') sortObj = { name: 1 };
+    else if (sort === 'za') sortObj = { name: -1 };
+
     if (pagination === "false") {
-      const companies = await CompanyModel.find(query).sort({ createdAt: -1 });
+      const companies = await CompanyModel.find(query).sort(sortObj);
       return successResponse(res, "Companies fetched successfully", { companies });
     }
 
@@ -143,7 +148,7 @@ export const getCompanies = async (req, res) => {
     const companies = await CompanyModel.find(query)
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
-      .sort({ createdAt: -1 });
+      .sort(sortObj);
 
     return successResponse(
       res,

@@ -22,7 +22,7 @@ export const addHiringManager = async (req, res) => {
 
 export const getHiringManagers = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "", pagination = "true" } = req.query;
+    const { page = 1, limit = 10, search = "", pagination = "true", sort = "latest", hasEmail, hasPhone } = req.query;
     
     let query = { userId: req.userId };
 
@@ -42,10 +42,18 @@ export const getHiringManagers = async (req, res) => {
       ];
     }
 
+    if (hasEmail === 'true') query.email = { $exists: true, $nin: ["", null] };
+    if (hasPhone === 'true') query.phone = { $exists: true, $nin: ["", null] };
+
+    let sortObj = { createdAt: -1 };
+    if (sort === 'oldest') sortObj = { createdAt: 1 };
+    else if (sort === 'az') sortObj = { name: 1 };
+    else if (sort === 'za') sortObj = { name: -1 };
+
     if (pagination === "false") {
       const managers = await HiringManagerModel.find(query)
         .populate("company")
-        .sort({ createdAt: -1 });
+        .sort(sortObj);
       return successResponse(res, "Hiring managers fetched successfully", { managers });
     }
 
@@ -57,7 +65,7 @@ export const getHiringManagers = async (req, res) => {
       .populate("company")
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
-      .sort({ createdAt: -1 });
+      .sort(sortObj);
 
     return successResponse(
       res,

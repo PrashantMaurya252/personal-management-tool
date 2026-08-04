@@ -16,6 +16,8 @@ export default function CompaniesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [sort, setSort] = useState("latest");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -28,7 +30,7 @@ export default function CompaniesPage() {
 
   const fetchCompanies = async () => {
     try {
-      const response = await axiosInstance.get(`/companies?page=${currentPage}&limit=10&search=${searchQuery}`);
+      const response = await axiosInstance.get(`/companies?page=${currentPage}&limit=${limit}&search=${searchQuery}&sort=${sort}`);
       if (response.data.success) {
         setCompanies(response.data.data.companies || []);
         if (response.data.data.pagination) {
@@ -45,7 +47,7 @@ export default function CompaniesPage() {
       fetchCompanies();
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchQuery, currentPage]);
+  }, [searchQuery, currentPage, limit, sort]);
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -176,8 +178,8 @@ export default function CompaniesPage() {
       </header>
 
       <div className="bg-white dark:bg-neutral-900/50 border border-gray-200 dark:border-neutral-800 rounded-2xl dark:backdrop-blur-xl overflow-hidden shadow-sm dark:shadow-none">
-        <div className="p-4 border-b border-gray-200 dark:border-neutral-800 flex items-center justify-between">
-          <div className="relative">
+        <div className="p-4 border-b border-gray-200 dark:border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="relative w-full sm:w-auto">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-500" />
             <input
               type="text"
@@ -189,6 +191,28 @@ export default function CompaniesPage() {
               placeholder="Search companies..."
               className="bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-sm rounded-xl pl-10 pr-4 py-2 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-full sm:w-64 transition-all"
             />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <select 
+              value={sort} 
+              onChange={(e) => setSort(e.target.value)}
+              className="bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="latest">Latest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="az">Name (A-Z)</option>
+              <option value="za">Name (Z-A)</option>
+            </select>
+            <select 
+              value={limit} 
+              onChange={(e) => { setLimit(Number(e.target.value)); setCurrentPage(1); }}
+              className="bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            >
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+            </select>
           </div>
         </div>
 
@@ -202,6 +226,7 @@ export default function CompaniesPage() {
                 <th className="p-4">Location</th>
                 <th className="p-4">Career Page</th>
                 <th className="p-4">Status</th>
+                <th className="p-4">Added At</th>
                 <th className="p-4 text-right pr-6">Actions</th>
               </tr>
             </thead>
@@ -236,6 +261,9 @@ export default function CompaniesPage() {
                       }`}>
                       {company.status.charAt(0).toUpperCase() + company.status.slice(1)}
                     </span>
+                  </td>
+                  <td className="p-4 text-gray-500 dark:text-neutral-400">
+                    {new Date(company.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </td>
                   <td className="p-4 text-right pr-6">
                     <div className="flex items-center justify-end space-x-2">
