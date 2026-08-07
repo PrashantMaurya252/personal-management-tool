@@ -61,7 +61,6 @@ You must conditionally append links to the signature ONLY IF they exist in the u
 ${resumeData.github ? "GitHub: {{GITHUB_LINK}}" : ""}
 ${resumeData.linkedin ? "LinkedIn: {{LINKEDIN_LINK}}" : ""}
 ${resumeData.portfolio ? "Portfolio: {{PORTFOLIO_LINK}}" : ""}
-Resume: {{RESUME_LINK}}
 
 Do not include social links if they are not in the resume data.
 

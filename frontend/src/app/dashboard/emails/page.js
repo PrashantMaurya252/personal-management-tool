@@ -16,6 +16,9 @@ export default function EmailsPage() {
   
   // Resume Status State
   const [hasDefaultResume, setHasDefaultResume] = useState(null);
+  const [resumes, setResumes] = useState([]);
+  const [selectedResumeId, setSelectedResumeId] = useState("");
+  const [customResume, setCustomResume] = useState(null);
 
   // Send Form State
   const [toEmail, setToEmail] = useState("");
@@ -30,8 +33,38 @@ export default function EmailsPage() {
   const [allManagers, setAllManagers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedManagers, setSelectedManagers] = useState([]); // Up to 10
-  const [wizardTemplateSubject, setWizardTemplateSubject] = useState("Application for {{hrName}} at {{companyName}}");
-  const [wizardTemplateBody, setWizardTemplateBody] = useState("Hi {{hrName}},\n\nI am interested in opportunities at {{companyName}}.\n\nBest,\n[Your Name]");
+  const [wizardTemplateSubject, setWizardTemplateSubject] = useState("Application for Software Developer / Full Stack Developer Opportunity at {{companyName}}");
+  const [wizardTemplateBody, setWizardTemplateBody] = useState(`Dear {{hrName}},
+
+I hope you're doing well.
+
+I came across {{companyName}} and was impressed by the work your engineering team is doing. I would like to express my interest in any Software Developer, Full Stack Developer, Backend Developer, Node.js Developer, or MERN Stack Developer opportunities at your organization.
+
+I have 2+ years of experience building scalable web applications using Node.js, NestJS, Express.js, React.js, Next.js, TypeScript, MongoDB, PostgreSQL, MySQL, Redis, Docker, and AWS. Throughout my experience, I have developed 350+ production APIs, contributed to 10+ enterprise-grade applications, and worked across domains including E-commerce, HRMS, Healthcare, LMS, Insurance, and Multi-Vendor platforms.
+
+Some highlights of my experience include:
+
+* Developing scalable backend services with Node.js, NestJS, Express.js, and TypeScript.
+* Designing secure authentication and authorization systems using JWT, OAuth2, and RBAC.
+* Building full-stack applications with React.js, Next.js, MongoDB, PostgreSQL, and Prisma.
+* Integrating AI-powered features, OCR services, payment gateways, real-time notifications, and cloud services.
+* Contributing to application architecture, database design, API documentation, and production deployments.
+
+In addition to my professional experience, I have built a production-ready e-commerce platform featuring JWT authentication, Google OAuth, Stripe payments, Redis caching, BullMQ queues, AI-powered semantic search using pgvector, and an admin dashboard.
+
+I am currently based in Noida and am available to join immediately. I have attached my resume for your review and would greatly appreciate it if you could consider my profile for any relevant openings at {{companyName}}. If there isn't a suitable opening at the moment, I would be grateful if you could keep my profile in mind for future opportunities.
+
+Thank you for your time and consideration. I look forward to hearing from you.
+
+Kind regards,
+
+Prashant Kumar Maurya
+Full Stack Developer | Backend Developer | Software Developer
+📧 prashantmaurya252@outlook.com
+📱 +91 6306315885
+💼 LinkedIn: {{LINKEDIN_LINK}}
+💻 Portfolio: {{PORTFOLIO_LINK}}
+🐙 GitHub: {{GITHUB_LINK}}`);
   
   // Wizard Mode State
   const [isWizardMode, setIsWizardMode] = useState(false);
@@ -39,6 +72,7 @@ export default function EmailsPage() {
   const [wizardSubject, setWizardSubject] = useState("");
   const [wizardBody, setWizardBody] = useState("");
   const [wizardScheduledAt, setWizardScheduledAt] = useState("");
+  const [wizardCustomResume, setWizardCustomResume] = useState(null);
   const [isWizardProcessing, setIsWizardProcessing] = useState(false);
 
   // Tracking Tab State
@@ -53,15 +87,24 @@ export default function EmailsPage() {
   const [editScheduledAt, setEditScheduledAt] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const checkDefaultResume = async () => {
+  const fetchResumes = async () => {
     try {
       const response = await axiosInstance.get("/resume");
       if (response.data.success && response.data.data?.length > 0) {
+        setResumes(response.data.data);
         setHasDefaultResume(true);
+        const defaultRes = response.data.data.find(r => r.isDefault);
+        if (defaultRes) {
+          setSelectedResumeId(defaultRes._id);
+        } else {
+          setSelectedResumeId(response.data.data[0]._id);
+        }
       } else {
+        setResumes([]);
         setHasDefaultResume(false);
       }
     } catch (error) {
+      setResumes([]);
       setHasDefaultResume(false);
     }
   };
@@ -93,7 +136,7 @@ export default function EmailsPage() {
   };
 
   useEffect(() => {
-    checkDefaultResume();
+    fetchResumes();
     fetchHiringManagers();
   }, []);
 
@@ -140,17 +183,35 @@ export default function EmailsPage() {
 
     setIsSending(true);
     try {
-      const payload = {
-        email: toEmail,
-        subject,
-        body,
-        companyName,
-        hrName,
-        scheduledAt,
-        profile: "Application"
-      };
+      let response;
+      if (customResume) {
+        const formData = new FormData();
+        formData.append("email", toEmail);
+        formData.append("subject", subject);
+        formData.append("body", body);
+        formData.append("companyName", companyName);
+        formData.append("hrName", hrName);
+        if (scheduledAt) formData.append("scheduledAt", scheduledAt);
+        formData.append("profile", "Application");
+        if (selectedResumeId) formData.append("resumeId", selectedResumeId);
+        formData.append("resumePdf", customResume);
 
-      const response = await axiosInstance.post("/emails/send-hr-email", payload);
+        response = await axiosInstance.post("/emails/send-hr-email", formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+      } else {
+        const payload = {
+          email: toEmail,
+          subject,
+          body,
+          companyName,
+          hrName,
+          scheduledAt,
+          profile: "Application",
+          resumeId: selectedResumeId
+        };
+        response = await axiosInstance.post("/emails/send-hr-email", payload);
+      }
 
       if (response.data.success) {
         toast.success(scheduledAt ? "Email scheduled successfully!" : "Email sent successfully!");
@@ -162,6 +223,7 @@ export default function EmailsPage() {
         setSubject("");
         setBody("");
         setScheduledAt("");
+        setCustomResume(null);
         setActiveTab("track");
       }
     } catch (error) {
@@ -206,6 +268,7 @@ export default function EmailsPage() {
     setWizardSubject(wizardTemplateSubject.replace(/\{\{hrName\}\}/g, hr).replace(/\{\{companyName\}\}/g, comp));
     setWizardBody(wizardTemplateBody.replace(/\{\{hrName\}\}/g, hr).replace(/\{\{companyName\}\}/g, comp));
     setWizardScheduledAt("");
+    setWizardCustomResume(null);
   };
 
   const handleWizardSkip = () => {
@@ -228,17 +291,36 @@ export default function EmailsPage() {
     setIsWizardProcessing(true);
     try {
       const manager = selectedManagers[wizardIndex];
-      const payload = {
-        email: manager.email,
-        subject: wizardSubject,
-        body: wizardBody,
-        companyName: manager.company?.name,
-        hrName: manager.name,
-        scheduledAt: wizardScheduledAt,
-        profile: "Enquiry"
-      };
+      let response;
 
-      const response = await axiosInstance.post("/emails/send-hr-email", payload);
+      if (wizardCustomResume) {
+        const formData = new FormData();
+        formData.append("email", manager.email);
+        formData.append("subject", wizardSubject);
+        formData.append("body", wizardBody);
+        if (manager.company?.name) formData.append("companyName", manager.company.name);
+        formData.append("hrName", manager.name);
+        if (wizardScheduledAt) formData.append("scheduledAt", wizardScheduledAt);
+        formData.append("profile", "Enquiry");
+        if (selectedResumeId) formData.append("resumeId", selectedResumeId);
+        formData.append("resumePdf", wizardCustomResume);
+
+        response = await axiosInstance.post("/emails/send-hr-email", formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+      } else {
+        const payload = {
+          email: manager.email,
+          subject: wizardSubject,
+          body: wizardBody,
+          companyName: manager.company?.name,
+          hrName: manager.name,
+          scheduledAt: wizardScheduledAt,
+          profile: "Enquiry",
+          resumeId: selectedResumeId
+        };
+        response = await axiosInstance.post("/emails/send-hr-email", payload);
+      }
 
       if (response.data.success) {
         toast.success(`Email to ${manager.name} ${wizardScheduledAt ? 'scheduled' : 'sent'}!`);
@@ -315,12 +397,13 @@ export default function EmailsPage() {
     }
   };
 
+  const availableManagers = allManagers.filter(m => !selectedManagers.some(sm => sm._id === m._id));
   const filteredManagers = searchQuery.trim() 
-    ? allManagers.filter(m => 
+    ? availableManagers.filter(m => 
         m.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         (m.company?.name || "").toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : [];
+    : availableManagers;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
@@ -505,6 +588,17 @@ export default function EmailsPage() {
                     />
                   </div>
 
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Custom Resume (Optional)</label>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => setCustomResume(e.target.files[0])}
+                      className="w-full bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
+                    />
+                    <p className="text-xs text-gray-400">Overrides the selected profile resume for attachment.</p>
+                  </div>
+
                   <button
                     type="submit"
                     disabled={isSending}
@@ -543,28 +637,28 @@ export default function EmailsPage() {
                         placeholder="Search manager or company..."
                         className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-500"
                       />
-                      
-                      {searchQuery.trim() && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl shadow-lg z-10 max-h-60 overflow-y-auto">
-                          {filteredManagers.length === 0 ? (
-                            <div className="p-3 text-sm text-gray-500">No results found</div>
-                          ) : (
-                            filteredManagers.map(m => (
-                              <button 
-                                key={m._id}
-                                onClick={() => handleAddManager(m)}
-                                className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-neutral-800 border-b border-gray-100 dark:border-neutral-800 last:border-0 flex items-center justify-between"
-                              >
-                                <div>
-                                  <p className="font-medium text-gray-900 dark:text-white text-sm">{m.name}</p>
-                                  <p className="text-xs text-gray-500">{m.company?.name || "Unknown Company"}</p>
-                                </div>
-                                <span className="text-xs text-purple-600 font-medium">Add +</span>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
+                    </div>
+
+                    <div className="border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden mb-4">
+                      <div className="max-h-48 overflow-y-auto bg-white dark:bg-neutral-900">
+                        {filteredManagers.length === 0 ? (
+                          <div className="p-4 text-sm text-gray-500 text-center">No available managers found.</div>
+                        ) : (
+                          filteredManagers.map(m => (
+                            <button 
+                              key={m._id}
+                              onClick={() => handleAddManager(m)}
+                              className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-neutral-800 border-b border-gray-100 dark:border-neutral-800 last:border-0 flex items-center justify-between transition-colors"
+                            >
+                              <div>
+                                <p className="font-medium text-gray-900 dark:text-white text-sm">{m.name}</p>
+                                <p className="text-xs text-gray-500">{m.company?.name || "Unknown Company"}</p>
+                              </div>
+                              <span className="text-xs px-2 py-1 bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 font-medium rounded-lg">Add +</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
                     </div>
                     
                     <div className="bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl p-2 min-h-[200px]">
@@ -646,6 +740,20 @@ export default function EmailsPage() {
 
                 <div className="space-y-4">
                   <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-neutral-400">Select Resume</label>
+                    <select
+                      value={selectedResumeId}
+                      onChange={(e) => setSelectedResumeId(e.target.value)}
+                      className="w-full bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all"
+                    >
+                      {resumes.map(resume => (
+                        <option key={resume._id} value={resume._id}>
+                          {resume.fileName || "Resume"} {resume.isDefault ? "(Default)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
                     <label className="text-xs font-medium text-gray-500 dark:text-neutral-400">Subject</label>
                     <input
                       type="text"
@@ -670,6 +778,16 @@ export default function EmailsPage() {
                       onChange={(e) => setWizardScheduledAt(e.target.value)}
                       className="w-full bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                     />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-neutral-400">Custom Resume (Optional)</label>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => setWizardCustomResume(e.target.files[0])}
+                      className="w-full bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-sm"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Overrides the dropdown selection for this email's attachment.</p>
                   </div>
                 </div>
 

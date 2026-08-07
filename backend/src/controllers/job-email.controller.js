@@ -27,7 +27,7 @@ export const getGeneratedAiResponse = async (req, res) => {
 
 export const sendtoHR = async (req, res) => {
   try {
-    const { email, subject, body, companyName, hrName, profile, scheduledAt } = req.body;
+    const { email, subject, body, companyName, hrName, profile, scheduledAt, resumeId } = req.body;
     
     if (!email || !subject || !body) {
       return res.status(400).json({ success: false, message: "Email, Subject and Body are required" });
@@ -75,13 +75,25 @@ export const sendtoHR = async (req, res) => {
       profile: profile || "Full Stack Developer",
       generatedSubject: subject,
       generatedBody: body,
-      status: "draft"
+      status: "draft",
+      resumeId: resumeId || null
     };
 
     if (companyId && companyId !== "null") emailData.company = companyId;
     if (hrId && hrId !== "null") emailData.recipientEmail = hrId;
 
     const newEmail = await EmailModel.create(emailData);
+
+    let selectedResume = null;
+    if (resumeId) {
+      selectedResume = await ResumeModel.findOne({ _id: resumeId, userId: req.userId });
+    }
+    if (!selectedResume) {
+      selectedResume = await ResumeModel.findOne({ userId: req.userId, isDefault: true });
+    }
+    if (!selectedResume) {
+      selectedResume = await ResumeModel.findOne({ userId: req.userId });
+    }
 
     let attachments = [];
     let savedEmailAttachments = [];
@@ -98,17 +110,15 @@ export const sendtoHR = async (req, res) => {
         }];
       }
     } else {
-      // Fetch default resume from Cloudinary
-      const defaultResume = await ResumeModel.findOne({ userId: req.userId, isDefault: true });
-      if (defaultResume && defaultResume.url) {
+      if (selectedResume && selectedResume.url) {
         attachments.push({
-          filename: defaultResume.fileName || "resume.pdf",
-          href: defaultResume.url
+          filename: selectedResume.fileName || "resume.pdf",
+          href: selectedResume.url
         });
         if (scheduledAt) {
            savedEmailAttachments = [{
-             fileName: defaultResume.fileName || "resume.pdf",
-             fileUrl: defaultResume.url
+             fileName: selectedResume.fileName || "resume.pdf",
+             fileUrl: selectedResume.url
            }];
         }
       }
@@ -126,11 +136,32 @@ export const sendtoHR = async (req, res) => {
       resume: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/resume`,
     };
 
-    let finalBody = body
-      .replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${trackingLinks.github}" target="_blank">GitHub Profile</a>`)
-      .replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${trackingLinks.linkedin}" target="_blank">LinkedIn Profile</a>`)
-      .replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${trackingLinks.portfolio}" target="_blank">Portfolio</a>`)
-      .replace(/\{\{RESUME_LINK\}\}/g, `<a href="${trackingLinks.resume}" target="_blank">Download Resume</a>`);
+    let finalBody = body;
+    const extractedData = selectedResume?.extractedData || {};
+
+    if (extractedData.github) {
+      finalBody = finalBody.replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${trackingLinks.github}" target="_blank">GitHub Profile</a>`);
+    } else {
+      finalBody = finalBody.replace(/^.*\{\{GITHUB_LINK\}\}.*$\n?/gm, '');
+    }
+
+    if (extractedData.linkedin) {
+      finalBody = finalBody.replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${trackingLinks.linkedin}" target="_blank">LinkedIn Profile</a>`);
+    } else {
+      finalBody = finalBody.replace(/^.*\{\{LINKEDIN_LINK\}\}.*$\n?/gm, '');
+    }
+
+    if (extractedData.portfolio) {
+      finalBody = finalBody.replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${trackingLinks.portfolio}" target="_blank">Portfolio</a>`);
+    } else {
+      finalBody = finalBody.replace(/^.*\{\{PORTFOLIO_LINK\}\}.*$\n?/gm, '');
+    }
+
+    if (extractedData.resumeLink || selectedResume?.url) {
+      finalBody = finalBody.replace(/\{\{RESUME_LINK\}\}/g, `<a href="${trackingLinks.resume}" target="_blank">Download Resume</a>`);
+    } else {
+      finalBody = finalBody.replace(/^.*\{\{RESUME_LINK\}\}.*$\n?/gm, '');
+    }
 
     finalBody = finalBody.replace(/\n/g, "<br>");
 
@@ -198,7 +229,17 @@ export const trackClick = async (req, res) => {
     let urlToRedirect = "https://github.com";
 
     if (emailRecord && emailRecord.userId) {
-      const resume = await ResumeModel.findOne({ userId: emailRecord.userId });
+      let resume = null;
+      if (emailRecord.resumeId) {
+        resume = await ResumeModel.findById(emailRecord.resumeId);
+      }
+      if (!resume) {
+        resume = await ResumeModel.findOne({ userId: emailRecord.userId, isDefault: true });
+      }
+      if (!resume) {
+        resume = await ResumeModel.findOne({ userId: emailRecord.userId });
+      }
+
       if (resume && resume.extractedData) {
         if (type === 'github' && resume.extractedData.github) urlToRedirect = resume.extractedData.github;
         if (type === 'linkedin' && resume.extractedData.linkedin) urlToRedirect = resume.extractedData.linkedin;
@@ -239,7 +280,7 @@ export const getEmailHistory = async (req, res) => {
 
 export const bulkEnquiry = async (req, res) => {
   try {
-    const { managerIds, subject, body, scheduledAt } = req.body;
+    const { managerIds, subject, body, scheduledAt, resumeId } = req.body;
     
     if (!managerIds || !managerIds.length || !subject || !body) {
       return res.status(400).json({ success: false, message: "Manager IDs, Subject and Body are required" });
@@ -247,6 +288,17 @@ export const bulkEnquiry = async (req, res) => {
 
     const managers = await HiringManagerModel.find({ _id: { $in: JSON.parse(managerIds) }, userId: req.userId }).populate('company');
     
+    let selectedResume = null;
+    if (resumeId) {
+      selectedResume = await ResumeModel.findOne({ _id: resumeId, userId: req.userId });
+    }
+    if (!selectedResume) {
+      selectedResume = await ResumeModel.findOne({ userId: req.userId, isDefault: true });
+    }
+    if (!selectedResume) {
+      selectedResume = await ResumeModel.findOne({ userId: req.userId });
+    }
+
     let fileAttachment = null;
     let mailAttachments = [];
     if (req.file) {
@@ -292,11 +344,32 @@ export const bulkEnquiry = async (req, res) => {
           resume: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/resume`,
         };
 
-        let finalBody = emailBody
-          .replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${trackingLinks.github}" target="_blank">GitHub Profile</a>`)
-          .replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${trackingLinks.linkedin}" target="_blank">LinkedIn Profile</a>`)
-          .replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${trackingLinks.portfolio}" target="_blank">Portfolio</a>`)
-          .replace(/\{\{RESUME_LINK\}\}/g, `<a href="${trackingLinks.resume}" target="_blank">Download Resume</a>`);
+        let finalBody = emailBody;
+        const extractedData = selectedResume?.extractedData || {};
+
+        if (extractedData.github) {
+          finalBody = finalBody.replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${trackingLinks.github}" target="_blank">GitHub Profile</a>`);
+        } else {
+          finalBody = finalBody.replace(/^.*\{\{GITHUB_LINK\}\}.*$\n?/gm, '');
+        }
+
+        if (extractedData.linkedin) {
+          finalBody = finalBody.replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${trackingLinks.linkedin}" target="_blank">LinkedIn Profile</a>`);
+        } else {
+          finalBody = finalBody.replace(/^.*\{\{LINKEDIN_LINK\}\}.*$\n?/gm, '');
+        }
+
+        if (extractedData.portfolio) {
+          finalBody = finalBody.replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${trackingLinks.portfolio}" target="_blank">Portfolio</a>`);
+        } else {
+          finalBody = finalBody.replace(/^.*\{\{PORTFOLIO_LINK\}\}.*$\n?/gm, '');
+        }
+
+        if (extractedData.resumeLink || selectedResume?.url) {
+          finalBody = finalBody.replace(/\{\{RESUME_LINK\}\}/g, `<a href="${trackingLinks.resume}" target="_blank">Download Resume</a>`);
+        } else {
+          finalBody = finalBody.replace(/^.*\{\{RESUME_LINK\}\}.*$\n?/gm, '');
+        }
 
         finalBody = finalBody.replace(/\n/g, "<br>");
         const pixelUrl = `${process.env.BACKEND_URL}/api/v1/emails/track/open/${emailIdStr}`;

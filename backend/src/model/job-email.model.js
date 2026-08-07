@@ -24,6 +24,11 @@ const emailSchema = new mongoose.Schema(
       required: true,
     },
 
+    resumeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Resume",
+    },
+
     minimumExperience: Number,
 
     jobDescription: String,
