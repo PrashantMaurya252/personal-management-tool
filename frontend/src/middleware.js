@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 export function middleware(request) {
   const token = request.cookies.get('token')?.value;
   const { pathname } = request.nextUrl;
+  console.log("Token : ", token);
+  console.log("Pathname : ", pathname);
 
   // Protect /dashboard routes
   if (pathname.startsWith('/dashboard')) {

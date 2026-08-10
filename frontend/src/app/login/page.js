@@ -33,7 +33,9 @@ export default function LoginPage() {
 
         toast.success(response.data.message || "Logged in successfully!");
         // Force a hard navigation to ensure the Next.js middleware receives the new cookie
+        console.log("Login successful 1");
         window.location.href = "/dashboard";
+        console.log("Login successful 2");
       }
     } catch (error) {
       toast.error(error.response?.data?.message || "Invalid credentials");
