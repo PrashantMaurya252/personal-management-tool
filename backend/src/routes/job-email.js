@@ -1,6 +1,6 @@
 import express from 'express'
 import multer from 'multer'
-import { getGeneratedAiResponse, sendtoHR, trackClick, getEmailHistory, bulkEnquiry, updateScheduledEmail, cancelScheduledEmail } from '../controllers/job-email.controller.js'
+import { getGeneratedAiResponse, sendtoHR, getEmailHistory, bulkEnquiry, updateScheduledEmail, cancelScheduledEmail } from '../controllers/job-email.controller.js'
 import { protectRoute } from '../middleware/auth.middleware.js'
 
 const jobEmailRoutes = express.Router()
@@ -15,6 +15,6 @@ jobEmailRoutes.post("/bulk-enquiry", protectRoute, upload.single("resumePdf"), b
 jobEmailRoutes.put("/:id", protectRoute, updateScheduledEmail)
 jobEmailRoutes.delete("/:id", protectRoute, cancelScheduledEmail)
 
-jobEmailRoutes.get("/track/click/:emailId/:type", trackClick)
+
 
 export default jobEmailRoutes

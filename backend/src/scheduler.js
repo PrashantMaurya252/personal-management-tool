@@ -143,13 +143,6 @@ export const initializeScheduler = () => {
           createdAt: { $gte: today }
         });
 
-        // Count actions taken (link clicks)
-        const emailsClicked = await EmailModel.countDocuments({
-          userId: user._id,
-          createdAt: { $gte: today },
-          'tracking.linkClicks.0': { $exists: true }
-        });
-
         // Count job openings found today
         const jobsFound = await JobOpeningModel.countDocuments({
           userId: user._id,
@@ -157,8 +150,8 @@ export const initializeScheduler = () => {
         });
 
         // Only create or update if there's any activity
-        if (appsSent > 0 || enqsSent > 0 || emailsClicked > 0 || jobsFound > 0) {
-          const description = `Today you have sent ${appsSent} job application(s) and ${enqsSent} job enquiry(s). Viewers took action on ${emailsClicked} of your emails. Your Job Scout found ${jobsFound} new job opening(s) today.`;
+        if (appsSent > 0 || enqsSent > 0 || jobsFound > 0) {
+          const description = `Today you have sent ${appsSent} job application(s) and ${enqsSent} job enquiry(s). Your Job Scout found ${jobsFound} new job opening(s) today.`;
 
           const existingNotification = await NotificationModel.findOne({ userId: user._id, title: title });
 

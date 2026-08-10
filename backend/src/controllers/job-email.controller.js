@@ -191,50 +191,7 @@ export const sendtoHR = async (req, res) => {
 
 
 
-export const trackClick = async (req, res) => {
-  try {
-    const { emailId, type } = req.params;
 
-    // Ideally these links would be dynamically fetched from the user's profile
-    // But for now we can fallback to standard ones or fetch ResumeModel
-    const emailRecord = await EmailModel.findById(emailId);
-    let urlToRedirect = "https://github.com";
-
-    if (emailRecord && emailRecord.userId) {
-      let resume = null;
-      if (emailRecord.resumeId) {
-        resume = await ResumeModel.findById(emailRecord.resumeId);
-      }
-      if (!resume) {
-        resume = await ResumeModel.findOne({ userId: emailRecord.userId, isDefault: true });
-      }
-      if (!resume) {
-        resume = await ResumeModel.findOne({ userId: emailRecord.userId });
-      }
-
-      if (resume && resume.extractedData) {
-        if (type === 'github' && resume.extractedData.github) urlToRedirect = resume.extractedData.github;
-        if (type === 'linkedin' && resume.extractedData.linkedin) urlToRedirect = resume.extractedData.linkedin;
-        if (type === 'portfolio' && resume.extractedData.portfolio) urlToRedirect = resume.extractedData.portfolio;
-        if (type === 'resume' && resume.extractedData.resumeLink) urlToRedirect = resume.extractedData.resumeLink;
-      }
-    }
-
-    await EmailModel.findByIdAndUpdate(emailId, {
-      $push: {
-        "tracking.linkClicks": {
-          url: type,
-          clickedAt: new Date(),
-          ipAddress: req.ip || "unknown",
-        },
-      },
-    });
-
-    res.redirect(urlToRedirect);
-  } catch (error) {
-    res.status(500).send("Error tracking link");
-  }
-};
 
 export const getEmailHistory = async (req, res) => {
   try {

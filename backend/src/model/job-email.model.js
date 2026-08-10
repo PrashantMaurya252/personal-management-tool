@@ -51,17 +51,6 @@ const emailSchema = new mongoose.Schema(
 
     scheduledAt: Date,
     sentAt: Date,
-
-    tracking: {
-      linkClicks: [
-        {
-          url: String,
-          clickedAt: Date,
-          ipAddress: String,
-        },
-      ],
-    },
-
     attachments: [
       {
         fileName: String,
