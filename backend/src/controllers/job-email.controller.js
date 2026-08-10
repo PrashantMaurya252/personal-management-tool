@@ -128,37 +128,30 @@ export const sendtoHR = async (req, res) => {
        newEmail.attachments = savedEmailAttachments;
        await newEmail.save();
     }
-    const emailIdStr = newEmail._id.toString();
-    const trackingLinks = {
-      github: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/github`,
-      linkedin: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/linkedin`,
-      portfolio: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/portfolio`,
-      resume: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/resume`,
-    };
-
     let finalBody = body;
     const extractedData = selectedResume?.extractedData || {};
 
     if (extractedData.github) {
-      finalBody = finalBody.replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${trackingLinks.github}" target="_blank">GitHub Profile</a>`);
+      finalBody = finalBody.replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${extractedData.github}" target="_blank">GitHub Profile</a>`);
     } else {
       finalBody = finalBody.replace(/^.*\{\{GITHUB_LINK\}\}.*$\n?/gm, '');
     }
 
     if (extractedData.linkedin) {
-      finalBody = finalBody.replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${trackingLinks.linkedin}" target="_blank">LinkedIn Profile</a>`);
+      finalBody = finalBody.replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${extractedData.linkedin}" target="_blank">LinkedIn Profile</a>`);
     } else {
       finalBody = finalBody.replace(/^.*\{\{LINKEDIN_LINK\}\}.*$\n?/gm, '');
     }
 
     if (extractedData.portfolio) {
-      finalBody = finalBody.replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${trackingLinks.portfolio}" target="_blank">Portfolio</a>`);
+      finalBody = finalBody.replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${extractedData.portfolio}" target="_blank">Portfolio</a>`);
     } else {
       finalBody = finalBody.replace(/^.*\{\{PORTFOLIO_LINK\}\}.*$\n?/gm, '');
     }
 
     if (extractedData.resumeLink || selectedResume?.url) {
-      finalBody = finalBody.replace(/\{\{RESUME_LINK\}\}/g, `<a href="${trackingLinks.resume}" target="_blank">Download Resume</a>`);
+      const resumeUrl = extractedData.resumeLink || selectedResume?.url;
+      finalBody = finalBody.replace(/\{\{RESUME_LINK\}\}/g, `<a href="${resumeUrl}" target="_blank">Download Resume</a>`);
     } else {
       finalBody = finalBody.replace(/^.*\{\{RESUME_LINK\}\}.*$\n?/gm, '');
     }
@@ -315,37 +308,30 @@ export const bulkEnquiry = async (req, res) => {
       
       if (!scheduledAt) {
         // Send immediately
-        const emailIdStr = newEmail._id.toString();
-        const trackingLinks = {
-          github: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/github`,
-          linkedin: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/linkedin`,
-          portfolio: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/portfolio`,
-          resume: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/resume`,
-        };
-
         let finalBody = emailBody;
         const extractedData = selectedResume?.extractedData || {};
 
         if (extractedData.github) {
-          finalBody = finalBody.replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${trackingLinks.github}" target="_blank">GitHub Profile</a>`);
+          finalBody = finalBody.replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${extractedData.github}" target="_blank">GitHub Profile</a>`);
         } else {
           finalBody = finalBody.replace(/^.*\{\{GITHUB_LINK\}\}.*$\n?/gm, '');
         }
 
         if (extractedData.linkedin) {
-          finalBody = finalBody.replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${trackingLinks.linkedin}" target="_blank">LinkedIn Profile</a>`);
+          finalBody = finalBody.replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${extractedData.linkedin}" target="_blank">LinkedIn Profile</a>`);
         } else {
           finalBody = finalBody.replace(/^.*\{\{LINKEDIN_LINK\}\}.*$\n?/gm, '');
         }
 
         if (extractedData.portfolio) {
-          finalBody = finalBody.replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${trackingLinks.portfolio}" target="_blank">Portfolio</a>`);
+          finalBody = finalBody.replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${extractedData.portfolio}" target="_blank">Portfolio</a>`);
         } else {
           finalBody = finalBody.replace(/^.*\{\{PORTFOLIO_LINK\}\}.*$\n?/gm, '');
         }
 
         if (extractedData.resumeLink || selectedResume?.url) {
-          finalBody = finalBody.replace(/\{\{RESUME_LINK\}\}/g, `<a href="${trackingLinks.resume}" target="_blank">Download Resume</a>`);
+          const resumeUrl = extractedData.resumeLink || selectedResume?.url;
+          finalBody = finalBody.replace(/\{\{RESUME_LINK\}\}/g, `<a href="${resumeUrl}" target="_blank">Download Resume</a>`);
         } else {
           finalBody = finalBody.replace(/^.*\{\{RESUME_LINK\}\}.*$\n?/gm, '');
         }

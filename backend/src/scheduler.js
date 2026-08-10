@@ -3,6 +3,7 @@ import EmailModel from './model/job-email.model.js';
 import { sendEmail } from './service/service.js';
 import HiringManagerModel from './model/hiring-managers.js';
 import UserModel from './model/user.model.js';
+import ResumeModel from './model/resume.model.js';
 import NotificationModel from './model/notification.model.js';
 import JobOpeningModel from './model/job-opening.model.js';
 import dotenv from 'dotenv';
@@ -30,21 +31,46 @@ export const initializeScheduler = () => {
             continue;
           }
 
-          const emailIdStr = email._id.toString();
-          const trackingLinks = {
-            github: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/github`,
-            linkedin: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/linkedin`,
-            portfolio: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/portfolio`,
-            resume: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/resume`,
-          };
+          let finalBody = email.generatedBody;
+          
+          let selectedResume = null;
+          if (email.resumeId) {
+            selectedResume = await ResumeModel.findById(email.resumeId);
+          }
+          if (!selectedResume && email.userId) {
+            selectedResume = await ResumeModel.findOne({ userId: email.userId, isDefault: true });
+          }
+          if (!selectedResume && email.userId) {
+            selectedResume = await ResumeModel.findOne({ userId: email.userId });
+          }
 
-          let finalBody = email.generatedBody
-            .replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${trackingLinks.github}" target="_blank">GitHub Profile</a>`)
-            .replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${trackingLinks.linkedin}" target="_blank">LinkedIn Profile</a>`)
-            .replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${trackingLinks.portfolio}" target="_blank">Portfolio</a>`)
-            .replace(/\{\{RESUME_LINK\}\}/g, `<a href="${trackingLinks.resume}" target="_blank">Download Resume</a>`);
+          const extractedData = selectedResume?.extractedData || {};
 
-          finalBody = finalBody.replace(/\n/g, '<br>');
+          if (extractedData.github) {
+            finalBody = finalBody.replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${extractedData.github}" target="_blank">GitHub Profile</a>`);
+          } else {
+            finalBody = finalBody.replace(/^.*\{\{GITHUB_LINK\}\}.*$\n?/gm, '');
+          }
+  
+          if (extractedData.linkedin) {
+            finalBody = finalBody.replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${extractedData.linkedin}" target="_blank">LinkedIn Profile</a>`);
+          } else {
+            finalBody = finalBody.replace(/^.*\{\{LINKEDIN_LINK\}\}.*$\n?/gm, '');
+          }
+  
+          if (extractedData.portfolio) {
+            finalBody = finalBody.replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${extractedData.portfolio}" target="_blank">Portfolio</a>`);
+          } else {
+            finalBody = finalBody.replace(/^.*\{\{PORTFOLIO_LINK\}\}.*$\n?/gm, '');
+          }
+  
+          if (extractedData.resumeLink || selectedResume?.url) {
+            const resumeUrl = extractedData.resumeLink || selectedResume?.url;
+            finalBody = finalBody.replace(/\{\{RESUME_LINK\}\}/g, `<a href="${resumeUrl}" target="_blank">Download Resume</a>`);
+          } else {
+            finalBody = finalBody.replace(/^.*\{\{RESUME_LINK\}\}.*$\n?/gm, '');
+          }
+
           finalBody = finalBody.replace(/\n/g, '<br>');
 
           let attachments = [];

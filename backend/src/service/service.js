@@ -16,7 +16,7 @@ export const sendEmail = async ({
     const text = body.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
 
     await transporter.sendMail({
-      from: process.env.MAIL_USER,
+      from: `"Job Scout" <${process.env.MAIL_USER}>`,
       to: email,
       subject,
       text,
