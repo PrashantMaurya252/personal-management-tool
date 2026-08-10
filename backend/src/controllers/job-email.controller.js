@@ -213,6 +213,9 @@ export const trackEmailOpen = async (req, res) => {
     );
 
     res.set("Content-Type", "image/gif");
+    res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
     res.send(pixel);
   } catch (error) {
     res.status(500).send("Error");

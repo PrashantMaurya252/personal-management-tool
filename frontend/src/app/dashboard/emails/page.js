@@ -839,7 +839,7 @@ Full Stack Developer | Backend Developer | Software Developer
                   <th className="p-4">Subject</th>
                   <th className="p-4">Status / Timing</th>
                   <th className="p-4">Opens</th>
-                  <th className="p-4 text-right pr-6">Actions</th>
+                  <th className="p-4 text-right pr-6">Clicks / Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-neutral-800/50">
@@ -896,6 +896,21 @@ Full Stack Developer | Backend Developer | Software Developer
                              <Trash2 className="w-4 h-4" />
                            </button>
                          </div>
+                       )}
+                       {email.status === 'sent' && email.tracking?.linkClicks?.length > 0 && (
+                         <div className="flex flex-col items-end gap-1">
+                           {Array.from(new Set(email.tracking.linkClicks.map(c => c.url))).map((url, i) => {
+                             const count = email.tracking.linkClicks.filter(c => c.url === url).length;
+                             return (
+                               <span key={i} className="text-[10px] bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-500/20 whitespace-nowrap">
+                                 {url.charAt(0).toUpperCase() + url.slice(1)}: {count} click{count > 1 ? 's' : ''}
+                               </span>
+                             )
+                           })}
+                         </div>
+                       )}
+                       {email.status === 'sent' && (!email.tracking?.linkClicks || email.tracking.linkClicks.length === 0) && (
+                         <span className="text-xs text-gray-400 dark:text-neutral-500">No clicks yet</span>
                        )}
                     </td>
                   </tr>
