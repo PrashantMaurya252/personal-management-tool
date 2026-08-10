@@ -4,6 +4,7 @@ import { sendEmail } from './service/service.js';
 import HiringManagerModel from './model/hiring-managers.js';
 import UserModel from './model/user.model.js';
 import NotificationModel from './model/notification.model.js';
+import JobOpeningModel from './model/job-opening.model.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -131,9 +132,15 @@ export const initializeScheduler = () => {
           'tracking.linkClicks.0': { $exists: true }
         });
 
+        // Count job openings found today
+        const jobsFound = await JobOpeningModel.countDocuments({
+          userId: user._id,
+          dateFound: { $gte: today }
+        });
+
         // Only create or update if there's any activity
-        if (appsSent > 0 || enqsSent > 0 || emailsSeen > 0 || emailsClicked > 0) {
-          const description = `Today you have sent ${appsSent} job application(s) and ${enqsSent} job enquiry(s). ${emailsSeen} of your emails were viewed, and viewers took action on ${emailsClicked} of them.`;
+        if (appsSent > 0 || enqsSent > 0 || emailsSeen > 0 || emailsClicked > 0 || jobsFound > 0) {
+          const description = `Today you have sent ${appsSent} job application(s) and ${enqsSent} job enquiry(s). ${emailsSeen} of your emails were viewed, and viewers took action on ${emailsClicked} of them. Your Job Scout found ${jobsFound} new job opening(s) today.`;
 
           const existingNotification = await NotificationModel.findOne({ userId: user._id, title: title });
 
