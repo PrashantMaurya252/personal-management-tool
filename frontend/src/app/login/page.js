@@ -26,6 +26,11 @@ export default function LoginPage() {
     try {
       const response = await axiosInstance.post("/auth/login", formData);
       if (response.data.success) {
+        // Store token in cookie for Next.js middleware to access on the frontend domain
+        if (response.data.token) {
+          document.cookie = `token=${response.data.token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax; ${process.env.NODE_ENV === 'production' ? 'Secure;' : ''}`;
+        }
+
         toast.success(response.data.message || "Logged in successfully!");
         router.push("/dashboard");
       }

@@ -13,7 +13,7 @@ RUN npm ci --omit=dev
 COPY . .
 
 # Create non-root user
-RUN useradd -m -u 1001 appuser \
+RUN useradd -m appuser \
     && chown -R appuser:appuser /app
 
 USER appuser

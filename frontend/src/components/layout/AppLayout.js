@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { LayoutDashboard, Building2, Users, FileText, Settings, LogOut, Mail, Telescope, Menu, X, Sun, Moon, Bell, CheckCircle2 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
@@ -10,6 +10,7 @@ import { toast } from "react-hot-toast";
 
 export default function AppLayout({ children }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -74,6 +75,21 @@ export default function AppLayout({ children }) {
     { name: "Resume", href: "/dashboard/resume", icon: FileText },
     { name: "Job Scout", href: "/dashboard/scout", icon: Telescope },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await axiosInstance.post("/auth/logout");
+      localStorage.removeItem("auth-storage");
+      // Clear token cookie from frontend domain
+      document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+      toast.success("Logged out successfully");
+      router.push("/login");
+    } catch (err) {
+      toast.error("Logout failed");
+      console.error(err);
+    }
+  };
+
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-neutral-950 text-gray-900 dark:text-neutral-100 overflow-hidden">
@@ -217,7 +233,10 @@ export default function AppLayout({ children }) {
             </button>
           )}
 
-          <button className="flex items-center space-x-3 px-4 py-3 w-full rounded-xl text-gray-600 dark:text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-all duration-200">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center space-x-3 px-4 py-3 w-full rounded-xl text-gray-600 dark:text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-all duration-200"
+          >
             <LogOut className="w-5 h-5" />
             <span>Logout</span>
           </button>
