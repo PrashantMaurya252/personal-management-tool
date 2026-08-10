@@ -2,6 +2,8 @@ import cron from 'node-cron';
 import EmailModel from './model/job-email.model.js';
 import { sendEmail } from './service/service.js';
 import HiringManagerModel from './model/hiring-managers.js';
+import UserModel from './model/user.model.js';
+import NotificationModel from './model/notification.model.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -17,77 +19,145 @@ export const initializeScheduler = () => {
 
       if (pendingEmails.length === 0) {
         console.log('[Scheduler] No scheduled emails to send at this time.');
-        return;
-      }
+      } else {
+        console.log(`[Scheduler] Found ${pendingEmails.length} emails to send.`);
 
-      console.log(`[Scheduler] Found ${pendingEmails.length} emails to send.`);
+        for (const email of pendingEmails) {
+          if (!email.recipientEmail || !email.recipientEmail.email) {
+            email.status = 'failed';
+            await email.save();
+            continue;
+          }
 
-      for (const email of pendingEmails) {
-        if (!email.recipientEmail || !email.recipientEmail.email) {
-          email.status = 'failed';
-          await email.save();
-          continue;
-        }
+          const emailIdStr = email._id.toString();
+          const trackingLinks = {
+            github: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/github`,
+            linkedin: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/linkedin`,
+            portfolio: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/portfolio`,
+            resume: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/resume`,
+          };
 
-        const emailIdStr = email._id.toString();
-        const trackingLinks = {
-          github: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/github`,
-          linkedin: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/linkedin`,
-          portfolio: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/portfolio`,
-          resume: `${process.env.BACKEND_URL}/api/v1/emails/track/click/${emailIdStr}/resume`,
-        };
+          let finalBody = email.generatedBody
+            .replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${trackingLinks.github}" target="_blank">GitHub Profile</a>`)
+            .replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${trackingLinks.linkedin}" target="_blank">LinkedIn Profile</a>`)
+            .replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${trackingLinks.portfolio}" target="_blank">Portfolio</a>`)
+            .replace(/\{\{RESUME_LINK\}\}/g, `<a href="${trackingLinks.resume}" target="_blank">Download Resume</a>`);
 
-        let finalBody = email.generatedBody
-          .replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${trackingLinks.github}" target="_blank">GitHub Profile</a>`)
-          .replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${trackingLinks.linkedin}" target="_blank">LinkedIn Profile</a>`)
-          .replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${trackingLinks.portfolio}" target="_blank">Portfolio</a>`)
-          .replace(/\{\{RESUME_LINK\}\}/g, `<a href="${trackingLinks.resume}" target="_blank">Download Resume</a>`);
+          finalBody = finalBody.replace(/\n/g, '<br>');
+          const pixelUrl = `${process.env.BACKEND_URL}/api/v1/emails/track/open/${emailIdStr}`;
+          finalBody += `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;" />`;
 
-        finalBody = finalBody.replace(/\n/g, '<br>');
-        const pixelUrl = `${process.env.BACKEND_URL}/api/v1/emails/track/open/${emailIdStr}`;
-        finalBody += `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;" />`;
-
-        let attachments = [];
-        if (email.attachments && email.attachments.length > 0) {
-          for (const att of email.attachments) {
-            if (att.fileData) {
-              attachments.push({
-                filename: att.fileName,
-                content: att.fileData
-              });
-            } else if (att.fileUrl) {
-              attachments.push({
-                filename: att.fileName,
-                href: att.fileUrl
-              });
+          let attachments = [];
+          if (email.attachments && email.attachments.length > 0) {
+            for (const att of email.attachments) {
+              if (att.fileData) {
+                attachments.push({
+                  filename: att.fileName,
+                  content: att.fileData
+                });
+              } else if (att.fileUrl) {
+                attachments.push({
+                  filename: att.fileName,
+                  href: att.fileUrl
+                });
+              }
             }
           }
-        }
 
-        const result = await sendEmail({
-          email: email.recipientEmail.email,
-          subject: email.generatedSubject,
-          body: finalBody,
-          attachments
-        });
+          const result = await sendEmail({
+            email: email.recipientEmail.email,
+            subject: email.generatedSubject,
+            body: finalBody,
+            attachments
+          });
 
-        if (result.success) {
-          email.status = 'sent';
-          email.sentAt = new Date();
-          if (email.attachments && email.attachments.length > 0) {
-             for (let i=0; i<email.attachments.length; i++) {
+          if (result.success) {
+            email.status = 'sent';
+            email.sentAt = new Date();
+            if (email.attachments && email.attachments.length > 0) {
+              for (let i = 0; i < email.attachments.length; i++) {
                 email.attachments[i].fileData = undefined;
-             }
+              }
+            }
+          } else {
+            email.status = 'failed';
           }
-        } else {
-          email.status = 'failed';
+          await email.save();
         }
-        await email.save();
+        console.log('[Scheduler] Finished processing scheduled emails.');
       }
-      console.log('[Scheduler] Finished processing scheduled emails.');
     } catch (error) {
       console.error('[Scheduler] Error processing scheduled emails:', error);
     }
   });
+
+  // Run every hour to generate activity notifications
+  cron.schedule('0 * * * *', async () => {
+    console.log('[Scheduler] Generating hourly activity notifications...');
+    try {
+      const users = await UserModel.find({});
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const dateString = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      const title = `Activity Summary for ${dateString}`;
+
+      for (const user of users) {
+        // Count applications sent today
+        const appsSent = await EmailModel.countDocuments({
+          userId: user._id,
+          purpose: 'Application',
+          createdAt: { $gte: today }
+        });
+
+        // Count enquiries sent today
+        const enqsSent = await EmailModel.countDocuments({
+          userId: user._id,
+          purpose: 'Enquiry',
+          createdAt: { $gte: today }
+        });
+
+        // Count emails seen today (created today and opened)
+        const emailsSeen = await EmailModel.countDocuments({
+          userId: user._id,
+          createdAt: { $gte: today },
+          'tracking.isOpened': true
+        });
+
+        // Count actions taken (link clicks)
+        const emailsClicked = await EmailModel.countDocuments({
+          userId: user._id,
+          createdAt: { $gte: today },
+          'tracking.linkClicks.0': { $exists: true }
+        });
+
+        // Only create or update if there's any activity
+        if (appsSent > 0 || enqsSent > 0 || emailsSeen > 0 || emailsClicked > 0) {
+          const description = `Today you have sent ${appsSent} job application(s) and ${enqsSent} job enquiry(s). ${emailsSeen} of your emails were viewed, and viewers took action on ${emailsClicked} of them.`;
+
+          const existingNotification = await NotificationModel.findOne({ userId: user._id, title: title });
+
+          if (existingNotification) {
+            existingNotification.description = description;
+            // Optionally set isRead to false if we want to alert the user again, 
+            // but might be annoying. We leave it as is or reset if we want.
+            await existingNotification.save();
+          } else {
+            await NotificationModel.create({
+              userId: user._id,
+              title: title,
+              description: description,
+              type: 'Other',
+              isRead: false
+            });
+          }
+        }
+      }
+      console.log('[Scheduler] Finished generating activity notifications.');
+    } catch (error) {
+      console.error('[Scheduler] Error generating activity notifications:', error);
+    }
+  });
+
   console.log('Email Scheduler initialized (runs every hour at minute 0)');
 };

@@ -12,6 +12,9 @@ export const getScoutSettings = async (req, res) => {
         userId: req.userId,
         timeSlots: ["10:00", "13:00", "16:00", "18:00"],
         isActive: true,
+        jobRoles: [],
+        keywords: [],
+        experienceLevels: [],
       });
     }
 
@@ -23,7 +26,7 @@ export const getScoutSettings = async (req, res) => {
 
 export const updateScoutSettings = async (req, res) => {
   try {
-    const { timeSlots, isActive } = req.body;
+    const { timeSlots, isActive, jobRoles, keywords, experienceLevels } = req.body;
     
     let settings = await ScoutSettingsModel.findOne({ userId: req.userId });
     
@@ -33,6 +36,9 @@ export const updateScoutSettings = async (req, res) => {
 
     if (timeSlots !== undefined) settings.timeSlots = timeSlots;
     if (isActive !== undefined) settings.isActive = isActive;
+    if (jobRoles !== undefined) settings.jobRoles = jobRoles;
+    if (keywords !== undefined) settings.keywords = keywords;
+    if (experienceLevels !== undefined) settings.experienceLevels = experienceLevels;
 
     await settings.save();
 

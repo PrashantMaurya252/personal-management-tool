@@ -23,7 +23,7 @@ export const getJobOpenings = async (req, res) => {
 
     const jobOpenings = await JobOpeningModel.find(filter)
       .populate("companyId", "name website logo")
-      .sort({ dateFound: -1 });
+      .sort({ matchScore: -1, dateFound: -1 });
 
     return successResponse(res, "Job openings fetched successfully", jobOpenings);
   } catch (error) {

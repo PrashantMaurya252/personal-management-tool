@@ -16,6 +16,18 @@ const ScoutSettingsSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    jobRoles: {
+      type: [String],
+      default: [],
+    },
+    keywords: {
+      type: [String],
+      default: [],
+    },
+    experienceLevels: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,

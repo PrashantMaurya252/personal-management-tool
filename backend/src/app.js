@@ -9,6 +9,7 @@ import hiringManagerRoutes from './routes/hiring-manager.routes.js'
 import resumeRoutes from './routes/resume.routes.js'
 import jobOpeningRoutes from './routes/job-opening.routes.js'
 import scoutSettingsRoutes from './routes/scout-settings.routes.js'
+import notificationRoutes from './routes/notification.routes.js'
 
 const app = express()
 
@@ -28,5 +29,6 @@ app.use("/api/v1",hiringManagerRoutes)
 app.use("/api/v1",resumeRoutes)
 app.use("/api/v1",jobOpeningRoutes)
 app.use("/api/v1",scoutSettingsRoutes)
+app.use("/api/v1/notifications", notificationRoutes)
 
 export default app

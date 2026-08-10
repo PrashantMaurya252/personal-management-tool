@@ -1,6 +1,5 @@
 import cron from "node-cron";
 import { chromium } from "playwright";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import ScoutSettingsModel from "../model/scout-settings.model.js";
 import CompanyModel from "../model/company.model.js";
 import ResumeModel from "../model/resume.model.js";
@@ -9,64 +8,92 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY);
+const calculateScore = (title, settings, resume) => {
+  let score = 0;
+  const titleLower = title.toLowerCase();
 
-const scrapeAndFilter = async (url, desiredRoles) => {
+  // Match roles (high priority)
+  if (settings && settings.jobRoles) {
+    for (const role of settings.jobRoles) {
+      if (titleLower.includes(role.toLowerCase())) score += 5;
+    }
+  }
+
+  // Match keywords
+  if (settings && settings.keywords) {
+    for (const kw of settings.keywords) {
+      if (titleLower.includes(kw.toLowerCase())) score += 2;
+    }
+  }
+
+  // Match experience
+  if (settings && settings.experienceLevels) {
+    for (const exp of settings.experienceLevels) {
+      if (titleLower.includes(exp.toLowerCase())) score += 3;
+    }
+  }
+
+  // Resume matching
+  if (resume && resume.rawText) {
+    const resumeTextLower = resume.rawText.toLowerCase();
+    const titleWords = titleLower.split(/[\s\-_,]+/);
+    for (const word of titleWords) {
+      if (word.length > 3 && resumeTextLower.includes(word)) {
+        score += 1;
+      }
+    }
+  }
+
+  return score;
+};
+
+const extractJobLinks = async (url) => {
   let browser;
   try {
-    // Launch headless playwright
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
-    
-    // Set a reasonable timeout and go to URL
     await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
     
-    // Get text content of the page
-    const pageText = await page.evaluate(() => document.body.innerText);
-    const htmlContent = await page.evaluate(() => document.body.innerHTML);
+    // Extract all links
+    const links = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('a')).map(a => ({
+        text: a.innerText.trim(),
+        href: a.href
+      })).filter(l => l.text && l.href && l.href.startsWith('http'));
+    });
     
     await browser.close();
-
-    // Use Gemini to analyze the page text
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const prompt = `
-      You are an AI assistant that finds job openings on career pages. 
-      The user is looking for roles that match any of these desired roles: ${desiredRoles.join(", ")}.
-      
-      Here is the raw text from a company's career page:
-      """
-      ${pageText.substring(0, 50000)} // truncate to prevent token limits
-      """
-      
-      Find if there are any job openings matching the desired roles. 
-      If there are, return a JSON array of objects with strictly the following format:
-      [
-        {
-          "jobTitle": "Exact Title of the Job",
-          "applyLink": "The URL to apply for the job (if available in the text or use ${url})"
-        }
-      ]
-      
-      If there are no matching roles, return an empty array [].
-      Return ONLY valid JSON without markdown formatting.
-    `;
-
-    const result = await model.generateContent(prompt);
-    let extractedText = result.response.text().trim();
     
-    // Clean up potential markdown formatting
-    if (extractedText.startsWith("\`\`\`json")) {
-      extractedText = extractedText.replace(/^\`\`\`json/, "").replace(/\`\`\`$/, "").trim();
-    } else if (extractedText.startsWith("\`\`\`")) {
-      extractedText = extractedText.replace(/^\`\`\`/, "").replace(/\`\`\`$/, "").trim();
-    }
+    // Basic filter for noise links
+    const ignoreWords = [
+      'about', 'about us', 'contact', 'contact us', 'privacy', 'privacy policy',
+      'terms', 'terms of service', 'home', 'login', 'sign in', 'sign up', 
+      'register', 'cookie', 'cookie policy', 'facebook', 'twitter', 'linkedin', 
+      'instagram', 'youtube', 'blog', 'careers', 'jobs', 'apply now', 'search',
+      'all jobs', 'view all'
+    ];
+    
+    const potentialJobs = links.filter(l => {
+      const textLower = l.text.toLowerCase();
+      // Filter out links that are too short or too long to be job titles
+      if (textLower.length < 5 || textLower.length > 100) return false;
+      
+      // Exact match for ignore words
+      if (ignoreWords.includes(textLower)) return false;
+      
+      return true;
+    });
 
-    try {
-      return JSON.parse(extractedText);
-    } catch (e) {
-      console.error("Failed to parse Gemini response", extractedText);
-      return [];
+    // To remove duplicates based on href and text
+    const uniqueJobsMap = new Map();
+    for (const job of potentialJobs) {
+      // Use text + href as unique key just in case same title has different links
+      const key = `${job.text}-${job.href}`;
+      if (!uniqueJobsMap.has(key)) {
+        uniqueJobsMap.set(key, job);
+      }
     }
+    return Array.from(uniqueJobsMap.values());
   } catch (error) {
     console.error(`Error scraping ${url}:`, error.message);
     if (browser) await browser.close();
@@ -76,10 +103,10 @@ const scrapeAndFilter = async (url, desiredRoles) => {
 
 export const runScoutForUser = async (userId) => {
   try {
-    const resume = await ResumeModel.findOne({ userId });
-    const desiredRoles = resume?.extractedData?.desiredRoles || [];
-    
-    if (desiredRoles.length === 0) return;
+    const settings = await ScoutSettingsModel.findOne({ userId });
+    if (!settings || !settings.isActive) return;
+
+    const resume = await ResumeModel.findOne({ userId, isDefault: true }) || await ResumeModel.findOne({ userId });
 
     const companies = await CompanyModel.find({ userId, isScoutEnabled: true });
     
@@ -87,23 +114,35 @@ export const runScoutForUser = async (userId) => {
       if (!company.companyCareerPage) continue;
       
       console.log(`Scouting ${company.name} for user ${userId}`);
-      const openings = await scrapeAndFilter(company.companyCareerPage, desiredRoles);
+      const links = await extractJobLinks(company.companyCareerPage);
       
-      for (const opening of openings) {
-        // Check if we already found this job recently
-        const existing = await JobOpeningModel.findOne({
-          userId,
-          companyId: company._id,
-          jobTitle: opening.jobTitle
-        });
+      for (const link of links) {
+        const score = calculateScore(link.text, settings, resume);
         
-        if (!existing) {
-          await JobOpeningModel.create({
+        // If the score is > 0, it means it matched something from the user's preferences or resume
+        // We can also have a threshold, but > 0 is fine for now to capture all relevant roles.
+        if (score > 0) {
+          const existing = await JobOpeningModel.findOne({
             userId,
             companyId: company._id,
-            jobTitle: opening.jobTitle,
-            applyLink: opening.applyLink || company.companyCareerPage,
+            jobTitle: link.text
           });
+          
+          if (!existing) {
+            await JobOpeningModel.create({
+              userId,
+              companyId: company._id,
+              jobTitle: link.text,
+              applyLink: link.href,
+              matchScore: score
+            });
+          } else {
+            // Update score if it changed
+            if (existing.matchScore !== score) {
+              existing.matchScore = score;
+              await existing.save();
+            }
+          }
         }
       }
     }
@@ -113,12 +152,9 @@ export const runScoutForUser = async (userId) => {
 };
 
 export const initializeScoutCron = () => {
-  // Since users have customizable time slots, we can run a global cron every hour
-  // and check if that hour matches any user's setting
   cron.schedule("0 * * * *", async () => {
     try {
       const now = new Date();
-      // Format as HH:00
       const currentSlot = `${now.getHours().toString().padStart(2, '0')}:00`;
       
       console.log(`[Job Scout] Running schedule for slot: ${currentSlot}`);
@@ -129,7 +165,6 @@ export const initializeScoutCron = () => {
       });
       
       for (const setting of activeSettings) {
-        // Run asynchronously so we don't block
         runScoutForUser(setting.userId).catch(e => console.error(e));
       }
     } catch (error) {

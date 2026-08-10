@@ -18,6 +18,7 @@ export default function CompaniesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [limit, setLimit] = useState(10);
   const [sort, setSort] = useState("latest");
+  const [hasCareerPage, setHasCareerPage] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -30,7 +31,7 @@ export default function CompaniesPage() {
 
   const fetchCompanies = async () => {
     try {
-      const response = await axiosInstance.get(`/companies?page=${currentPage}&limit=${limit}&search=${searchQuery}&sort=${sort}`);
+      const response = await axiosInstance.get(`/companies?page=${currentPage}&limit=${limit}&search=${searchQuery}&sort=${sort}&hasCareerPage=${hasCareerPage}`);
       if (response.data.success) {
         setCompanies(response.data.data.companies || []);
         if (response.data.data.pagination) {
@@ -47,7 +48,7 @@ export default function CompaniesPage() {
       fetchCompanies();
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchQuery, currentPage, limit, sort]);
+  }, [searchQuery, currentPage, limit, sort, hasCareerPage]);
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -193,6 +194,14 @@ export default function CompaniesPage() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={hasCareerPage}
+              onChange={(e) => { setHasCareerPage(e.target.value); setCurrentPage(1); }}
+              className="bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">All Companies</option>
+              <option value="true">With Career Page</option>
+            </select>
             <select 
               value={sort} 
               onChange={(e) => setSort(e.target.value)}

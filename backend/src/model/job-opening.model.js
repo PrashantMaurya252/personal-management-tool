@@ -30,6 +30,10 @@ const JobOpeningSchema = new mongoose.Schema(
       enum: ["new", "viewed", "applied", "rejected"],
       default: "new",
     },
+    matchScore: {
+      type: Number,
+      default: 0,
+    }
   },
   {
     timestamps: true,

@@ -1,12 +1,61 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Telescope, Clock, ExternalLink, Calendar, Loader2, Save, Power, PowerOff, Building } from "lucide-react";
+import { Telescope, Clock, ExternalLink, Calendar, Loader2, Power, PowerOff, Building, Tag, Zap } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "react-hot-toast";
 
+const TagInput = ({ tags = [], onChange, placeholder, label }) => {
+  const [inputValue, setInputValue] = useState("");
+  
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && inputValue.trim()) {
+      e.preventDefault();
+      if (!tags.includes(inputValue.trim())) {
+        onChange([...tags, inputValue.trim()]);
+      }
+      setInputValue("");
+    }
+  };
+
+  const removeTag = (tagToRemove) => {
+    onChange(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  return (
+    <div className="space-y-2 mt-4">
+      <label className="text-sm font-medium text-gray-700 dark:text-neutral-300">{label}</label>
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {tags.map(tag => (
+            <span key={tag} className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-400 rounded-lg text-sm flex items-center">
+              {tag}
+              <button onClick={() => removeTag(tag)} className="ml-1.5 text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300">&times;</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <input
+        type="text"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        className="w-full bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+      />
+      <p className="text-xs text-gray-400">Press enter to add</p>
+    </div>
+  );
+};
+
 export default function JobScoutPage() {
-  const [settings, setSettings] = useState({ isActive: true, timeSlots: [] });
+  const [settings, setSettings] = useState({ 
+    isActive: true, 
+    timeSlots: [],
+    jobRoles: [],
+    keywords: [],
+    experienceLevels: []
+  });
   const [newTimeSlot, setNewTimeSlot] = useState("10:00");
   const [isSaving, setIsSaving] = useState(false);
   
@@ -38,7 +87,13 @@ export default function JobScoutPage() {
     try {
       const response = await axiosInstance.get("/scout-settings");
       if (response.data.success) {
-        setSettings(response.data.data);
+        setSettings({
+          isActive: response.data.data.isActive ?? true,
+          timeSlots: response.data.data.timeSlots || [],
+          jobRoles: response.data.data.jobRoles || [],
+          keywords: response.data.data.keywords || [],
+          experienceLevels: response.data.data.experienceLevels || []
+        });
       }
     } catch (error) {
       console.error("Failed to fetch settings:", error);
@@ -47,7 +102,7 @@ export default function JobScoutPage() {
 
   const fetchCompanies = async () => {
     try {
-      const response = await axiosInstance.get(`/companies?pagination=false&search=${companySearchQuery}`);
+      const response = await axiosInstance.get(`/companies?pagination=false&hasCareerPage=true&search=${companySearchQuery}`);
       if (response.data.success) {
         setCompanies(response.data.data.companies || []);
       }
@@ -149,7 +204,7 @@ export default function JobScoutPage() {
             Automated Job Scout
           </h1>
           <p className="text-gray-500 dark:text-neutral-400 mt-2">
-            Configure your AI assistant to automatically scan career pages for matching roles.
+            Configure your scout to automatically find roles matching your resume and preferences.
           </p>
         </div>
         <button
@@ -171,12 +226,40 @@ export default function JobScoutPage() {
           {/* Settings Panel */}
           <div className="bg-white dark:bg-neutral-900/50 border border-gray-200 dark:border-neutral-800 rounded-2xl p-6 dark:backdrop-blur-xl shadow-sm dark:shadow-none">
             <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+              <Tag className="w-5 h-5 mr-2 text-indigo-500 dark:text-indigo-400" />
+              Scout Filters
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-neutral-400 mb-4">
+              Add keywords to help the scout find the best jobs. We will also use your default resume.
+            </p>
+
+            <TagInput 
+              label="Job Roles" 
+              placeholder="e.g. Software Engineer, Developer" 
+              tags={settings.jobRoles}
+              onChange={(newTags) => saveSettings({ ...settings, jobRoles: newTags })}
+            />
+            
+            <TagInput 
+              label="Keywords" 
+              placeholder="e.g. React, Node.js, Python" 
+              tags={settings.keywords}
+              onChange={(newTags) => saveSettings({ ...settings, keywords: newTags })}
+            />
+
+            <TagInput 
+              label="Experience Levels" 
+              placeholder="e.g. Senior, Junior, Entry Level" 
+              tags={settings.experienceLevels}
+              onChange={(newTags) => saveSettings({ ...settings, experienceLevels: newTags })}
+            />
+            
+            <hr className="my-6 border-gray-200 dark:border-neutral-800" />
+
+            <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center">
               <Clock className="w-5 h-5 mr-2 text-blue-500 dark:text-blue-400" />
               Scout Schedule
             </h3>
-            <p className="text-sm text-gray-500 dark:text-neutral-400 mb-4">
-              Select what times (24h format) the AI should check your enabled companies.
-            </p>
 
             <div className="flex flex-wrap gap-2 mb-4">
               {settings.timeSlots.map((slot) => (
@@ -213,9 +296,6 @@ export default function JobScoutPage() {
 
             <div className="pt-6 border-t border-gray-200 dark:border-neutral-800">
               <h4 className="font-bold text-gray-900 dark:text-white mb-2 text-sm">Instant Action</h4>
-              <p className="text-xs text-gray-500 dark:text-neutral-400 mb-4">
-                Manually trigger the scout immediately without waiting for the schedule.
-              </p>
               <button
                 onClick={runManualScout}
                 disabled={isManualScouting || companies.length === 0}
@@ -264,11 +344,6 @@ export default function JobScoutPage() {
                 <div key={company._id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-neutral-950 rounded-xl border border-gray-100 dark:border-neutral-800/50">
                   <div className="overflow-hidden">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{company.name}</p>
-                    {company.companyCareerPage ? (
-                      <p className="text-xs text-emerald-600 dark:text-emerald-400">Has career page</p>
-                    ) : (
-                      <p className="text-xs text-red-500 dark:text-red-400">No career page link</p>
-                    )}
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input 
@@ -318,9 +393,17 @@ export default function JobScoutPage() {
                     className="group bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl p-5 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     <div>
-                      <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                        {job.jobTitle}
-                      </h4>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h4 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          {job.jobTitle}
+                        </h4>
+                        {job.matchScore > 0 && (
+                          <span className="flex items-center px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-bold border border-amber-200 dark:border-amber-500/20">
+                            <Zap className="w-3 h-3 mr-1" />
+                            Score: {job.matchScore}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-500 dark:text-neutral-400 flex items-center">
                         <Building className="w-4 h-4 mr-1.5" />
                         {job.companyId?.name || "Unknown Company"}
@@ -349,7 +432,7 @@ export default function JobScoutPage() {
                 </div>
                 <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Openings Found</h4>
                 <p className="text-gray-500 dark:text-neutral-400 max-w-sm mx-auto text-sm">
-                  The AI scout hasn't discovered any roles matching your desired roles on this date.
+                  The AI scout hasn't discovered any roles matching your preferences on this date.
                 </p>
               </div>
             )}

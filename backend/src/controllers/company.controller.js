@@ -119,7 +119,7 @@ export const createCompany = async (req, res) => {
 
 export const getCompanies = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "", pagination = "true", sort = "latest" } = req.query;
+    const { page = 1, limit = 10, search = "", pagination = "true", sort = "latest", hasCareerPage = "" } = req.query;
     
     let query = { userId: req.userId };
 
@@ -129,6 +129,10 @@ export const getCompanies = async (req, res) => {
         { industry: { $regex: search, $options: "i" } },
         { location: { $regex: search, $options: "i" } }
       ];
+    }
+
+    if (hasCareerPage === "true") {
+      query.companyCareerPage = { $exists: true, $ne: "" };
     }
 
     let sortObj = { createdAt: -1 };
