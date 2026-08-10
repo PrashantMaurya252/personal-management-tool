@@ -165,8 +165,7 @@ export const sendtoHR = async (req, res) => {
 
     finalBody = finalBody.replace(/\n/g, "<br>");
 
-    const pixelUrl = `${process.env.BACKEND_URL}/api/v1/emails/track/open/${emailIdStr}`;
-    finalBody += `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;" />`;
+    finalBody = finalBody.replace(/\n/g, "<br>");
 
 
     if (scheduledAt) {
@@ -197,30 +196,7 @@ export const sendtoHR = async (req, res) => {
   }
 };
 
-export const trackEmailOpen = async (req, res) => {
-  try {
-    const { emailId } = req.params;
 
-    await EmailModel.findByIdAndUpdate(emailId, {
-      $set: { "tracking.isOpened": true },
-      $inc: { "tracking.openedCount": 1 },
-      $push: { "tracking.openedAt": new Date() },
-    });
-
-    const pixel = Buffer.from(
-      "R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
-      "base64"
-    );
-
-    res.set("Content-Type", "image/gif");
-    res.set("Cache-Control", "no-cache, no-store, must-revalidate");
-    res.set("Pragma", "no-cache");
-    res.set("Expires", "0");
-    res.send(pixel);
-  } catch (error) {
-    res.status(500).send("Error");
-  }
-};
 
 export const trackClick = async (req, res) => {
   try {
@@ -375,8 +351,7 @@ export const bulkEnquiry = async (req, res) => {
         }
 
         finalBody = finalBody.replace(/\n/g, "<br>");
-        const pixelUrl = `${process.env.BACKEND_URL}/api/v1/emails/track/open/${emailIdStr}`;
-        finalBody += `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;" />`;
+        finalBody = finalBody.replace(/\n/g, "<br>");
 
         const result = await sendEmail({
           email: hr.email,

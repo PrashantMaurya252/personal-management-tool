@@ -45,8 +45,7 @@ export const initializeScheduler = () => {
             .replace(/\{\{RESUME_LINK\}\}/g, `<a href="${trackingLinks.resume}" target="_blank">Download Resume</a>`);
 
           finalBody = finalBody.replace(/\n/g, '<br>');
-          const pixelUrl = `${process.env.BACKEND_URL}/api/v1/emails/track/open/${emailIdStr}`;
-          finalBody += `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;" />`;
+          finalBody = finalBody.replace(/\n/g, '<br>');
 
           let attachments = [];
           if (email.attachments && email.attachments.length > 0) {
@@ -118,13 +117,6 @@ export const initializeScheduler = () => {
           createdAt: { $gte: today }
         });
 
-        // Count emails seen today (created today and opened)
-        const emailsSeen = await EmailModel.countDocuments({
-          userId: user._id,
-          createdAt: { $gte: today },
-          'tracking.isOpened': true
-        });
-
         // Count actions taken (link clicks)
         const emailsClicked = await EmailModel.countDocuments({
           userId: user._id,
@@ -139,8 +131,8 @@ export const initializeScheduler = () => {
         });
 
         // Only create or update if there's any activity
-        if (appsSent > 0 || enqsSent > 0 || emailsSeen > 0 || emailsClicked > 0 || jobsFound > 0) {
-          const description = `Today you have sent ${appsSent} job application(s) and ${enqsSent} job enquiry(s). ${emailsSeen} of your emails were viewed, and viewers took action on ${emailsClicked} of them. Your Job Scout found ${jobsFound} new job opening(s) today.`;
+        if (appsSent > 0 || enqsSent > 0 || emailsClicked > 0 || jobsFound > 0) {
+          const description = `Today you have sent ${appsSent} job application(s) and ${enqsSent} job enquiry(s). Viewers took action on ${emailsClicked} of your emails. Your Job Scout found ${jobsFound} new job opening(s) today.`;
 
           const existingNotification = await NotificationModel.findOne({ userId: user._id, title: title });
 
