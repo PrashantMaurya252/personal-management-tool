@@ -32,7 +32,8 @@ export default function LoginPage() {
         }
 
         toast.success(response.data.message || "Logged in successfully!");
-        router.push("/dashboard");
+        // Force a hard navigation to ensure the Next.js middleware receives the new cookie
+        window.location.href = "/dashboard";
       }
     } catch (error) {
       toast.error(error.response?.data?.message || "Invalid credentials");
