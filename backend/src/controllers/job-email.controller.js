@@ -69,21 +69,6 @@ export const sendtoHR = async (req, res) => {
       hrId = hrManager._id;
     }
 
-    // Check valid references
-    const emailData = {
-      userId: req.userId,
-      profile: profile || "Full Stack Developer",
-      generatedSubject: subject,
-      generatedBody: body,
-      status: "draft",
-      resumeId: resumeId || null
-    };
-
-    if (companyId && companyId !== "null") emailData.company = companyId;
-    if (hrId && hrId !== "null") emailData.recipientEmail = hrId;
-
-    const newEmail = await EmailModel.create(emailData);
-
     let selectedResume = null;
     if (resumeId) {
       selectedResume = await ResumeModel.findOne({ _id: resumeId, userId: req.userId });
@@ -94,6 +79,50 @@ export const sendtoHR = async (req, res) => {
     if (!selectedResume) {
       selectedResume = await ResumeModel.findOne({ userId: req.userId });
     }
+
+    let finalBody = body;
+    const extractedData = selectedResume?.extractedData || {};
+
+    if (extractedData.github) {
+      finalBody = finalBody.replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${extractedData.github}" target="_blank">GitHub Profile</a>`);
+    } else {
+      finalBody = finalBody.replace(/^.*\{\{GITHUB_LINK\}\}.*$\n?/gm, '');
+    }
+
+    if (extractedData.linkedin) {
+      finalBody = finalBody.replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${extractedData.linkedin}" target="_blank">LinkedIn Profile</a>`);
+    } else {
+      finalBody = finalBody.replace(/^.*\{\{LINKEDIN_LINK\}\}.*$\n?/gm, '');
+    }
+
+    if (extractedData.portfolio) {
+      finalBody = finalBody.replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${extractedData.portfolio}" target="_blank">Portfolio</a>`);
+    } else {
+      finalBody = finalBody.replace(/^.*\{\{PORTFOLIO_LINK\}\}.*$\n?/gm, '');
+    }
+
+    if (extractedData.resumeLink || selectedResume?.url) {
+      finalBody = finalBody.replace(/\{\{RESUME_LINK\}\}/g, `<a href="${extractedData.resumeLink || selectedResume?.url}" target="_blank">Download Resume</a>`);
+    } else {
+      finalBody = finalBody.replace(/^.*\{\{RESUME_LINK\}\}.*$\n?/gm, '');
+    }
+
+    finalBody = finalBody.replace(/\n/g, "<br>");
+
+    // Check valid references
+    const emailData = {
+      userId: req.userId,
+      profile: profile || "Full Stack Developer",
+      generatedSubject: subject,
+      generatedBody: finalBody,
+      status: "draft",
+      resumeId: resumeId || null
+    };
+
+    if (companyId && companyId !== "null") emailData.company = companyId;
+    if (hrId && hrId !== "null") emailData.recipientEmail = hrId;
+
+    const newEmail = await EmailModel.create(emailData);
 
     let attachments = [];
     let savedEmailAttachments = [];
@@ -128,37 +157,6 @@ export const sendtoHR = async (req, res) => {
        newEmail.attachments = savedEmailAttachments;
        await newEmail.save();
     }
-    let finalBody = body;
-    const extractedData = selectedResume?.extractedData || {};
-
-    if (extractedData.github) {
-      finalBody = finalBody.replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${extractedData.github}" target="_blank">GitHub Profile</a>`);
-    } else {
-      finalBody = finalBody.replace(/^.*\{\{GITHUB_LINK\}\}.*$\n?/gm, '');
-    }
-
-    if (extractedData.linkedin) {
-      finalBody = finalBody.replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${extractedData.linkedin}" target="_blank">LinkedIn Profile</a>`);
-    } else {
-      finalBody = finalBody.replace(/^.*\{\{LINKEDIN_LINK\}\}.*$\n?/gm, '');
-    }
-
-    if (extractedData.portfolio) {
-      finalBody = finalBody.replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${extractedData.portfolio}" target="_blank">Portfolio</a>`);
-    } else {
-      finalBody = finalBody.replace(/^.*\{\{PORTFOLIO_LINK\}\}.*$\n?/gm, '');
-    }
-
-    if (extractedData.resumeLink || selectedResume?.url) {
-      const resumeUrl = extractedData.resumeLink || selectedResume?.url;
-      finalBody = finalBody.replace(/\{\{RESUME_LINK\}\}/g, `<a href="${resumeUrl}" target="_blank">Download Resume</a>`);
-    } else {
-      finalBody = finalBody.replace(/^.*\{\{RESUME_LINK\}\}.*$\n?/gm, '');
-    }
-
-    finalBody = finalBody.replace(/\n/g, "<br>");
-
-    finalBody = finalBody.replace(/\n/g, "<br>");
 
 
     if (scheduledAt) {
@@ -189,9 +187,72 @@ export const sendtoHR = async (req, res) => {
   }
 };
 
+export const trackEmailOpen = async (req, res) => {
+  try {
+    const { emailId } = req.params;
 
+    await EmailModel.findByIdAndUpdate(emailId, {
+      $set: { "tracking.isOpened": true },
+      $inc: { "tracking.openedCount": 1 },
+      $push: { "tracking.openedAt": new Date() },
+    });
 
+    const pixel = Buffer.from(
+      "R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
+      "base64"
+    );
 
+    res.set("Content-Type", "image/gif");
+    res.send(pixel);
+  } catch (error) {
+    res.status(500).send("Error");
+  }
+};
+
+export const trackClick = async (req, res) => {
+  try {
+    const { emailId, type } = req.params;
+
+    // Ideally these links would be dynamically fetched from the user's profile
+    // But for now we can fallback to standard ones or fetch ResumeModel
+    const emailRecord = await EmailModel.findById(emailId);
+    let urlToRedirect = "https://github.com";
+
+    if (emailRecord && emailRecord.userId) {
+      let resume = null;
+      if (emailRecord.resumeId) {
+        resume = await ResumeModel.findById(emailRecord.resumeId);
+      }
+      if (!resume) {
+        resume = await ResumeModel.findOne({ userId: emailRecord.userId, isDefault: true });
+      }
+      if (!resume) {
+        resume = await ResumeModel.findOne({ userId: emailRecord.userId });
+      }
+
+      if (resume && resume.extractedData) {
+        if (type === 'github' && resume.extractedData.github) urlToRedirect = resume.extractedData.github;
+        if (type === 'linkedin' && resume.extractedData.linkedin) urlToRedirect = resume.extractedData.linkedin;
+        if (type === 'portfolio' && resume.extractedData.portfolio) urlToRedirect = resume.extractedData.portfolio;
+        if (type === 'resume' && resume.extractedData.resumeLink) urlToRedirect = resume.extractedData.resumeLink;
+      }
+    }
+
+    await EmailModel.findByIdAndUpdate(emailId, {
+      $push: {
+        "tracking.linkClicks": {
+          url: type,
+          clickedAt: new Date(),
+          ipAddress: req.ip || "unknown",
+        },
+      },
+    });
+
+    res.redirect(urlToRedirect);
+  } catch (error) {
+    res.status(500).send("Error tracking link");
+  }
+};
 
 export const getEmailHistory = async (req, res) => {
   try {
@@ -245,9 +306,37 @@ export const bulkEnquiry = async (req, res) => {
     for (const hr of managers) {
       const hrName = hr.name;
       const compName = hr.company?.name || "your company";
-      const emailBody = body.replace(/\{\{hrName\}\}/g, hrName).replace(/\{\{companyName\}\}/g, compName);
+      let emailBody = body.replace(/\{\{hrName\}\}/g, hrName).replace(/\{\{companyName\}\}/g, compName);
       const emailSubject = subject.replace(/\{\{hrName\}\}/g, hrName).replace(/\{\{companyName\}\}/g, compName);
       
+      const extractedData = selectedResume?.extractedData || {};
+
+      if (extractedData.github) {
+        emailBody = emailBody.replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${extractedData.github}" target="_blank">GitHub Profile</a>`);
+      } else {
+        emailBody = emailBody.replace(/^.*\{\{GITHUB_LINK\}\}.*$\n?/gm, '');
+      }
+
+      if (extractedData.linkedin) {
+        emailBody = emailBody.replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${extractedData.linkedin}" target="_blank">LinkedIn Profile</a>`);
+      } else {
+        emailBody = emailBody.replace(/^.*\{\{LINKEDIN_LINK\}\}.*$\n?/gm, '');
+      }
+
+      if (extractedData.portfolio) {
+        emailBody = emailBody.replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${extractedData.portfolio}" target="_blank">Portfolio</a>`);
+      } else {
+        emailBody = emailBody.replace(/^.*\{\{PORTFOLIO_LINK\}\}.*$\n?/gm, '');
+      }
+
+      if (extractedData.resumeLink || selectedResume?.url) {
+        emailBody = emailBody.replace(/\{\{RESUME_LINK\}\}/g, `<a href="${extractedData.resumeLink || selectedResume?.url}" target="_blank">Download Resume</a>`);
+      } else {
+        emailBody = emailBody.replace(/^.*\{\{RESUME_LINK\}\}.*$\n?/gm, '');
+      }
+
+      emailBody = emailBody.replace(/\n/g, "<br>");
+
       const emailData = {
         userId: req.userId,
         purpose: "Enquiry",
@@ -265,41 +354,10 @@ export const bulkEnquiry = async (req, res) => {
       
       if (!scheduledAt) {
         // Send immediately
-        let finalBody = emailBody;
-        const extractedData = selectedResume?.extractedData || {};
-
-        if (extractedData.github) {
-          finalBody = finalBody.replace(/\{\{GITHUB_LINK\}\}/g, `<a href="${extractedData.github}" target="_blank">GitHub Profile</a>`);
-        } else {
-          finalBody = finalBody.replace(/^.*\{\{GITHUB_LINK\}\}.*$\n?/gm, '');
-        }
-
-        if (extractedData.linkedin) {
-          finalBody = finalBody.replace(/\{\{LINKEDIN_LINK\}\}/g, `<a href="${extractedData.linkedin}" target="_blank">LinkedIn Profile</a>`);
-        } else {
-          finalBody = finalBody.replace(/^.*\{\{LINKEDIN_LINK\}\}.*$\n?/gm, '');
-        }
-
-        if (extractedData.portfolio) {
-          finalBody = finalBody.replace(/\{\{PORTFOLIO_LINK\}\}/g, `<a href="${extractedData.portfolio}" target="_blank">Portfolio</a>`);
-        } else {
-          finalBody = finalBody.replace(/^.*\{\{PORTFOLIO_LINK\}\}.*$\n?/gm, '');
-        }
-
-        if (extractedData.resumeLink || selectedResume?.url) {
-          const resumeUrl = extractedData.resumeLink || selectedResume?.url;
-          finalBody = finalBody.replace(/\{\{RESUME_LINK\}\}/g, `<a href="${resumeUrl}" target="_blank">Download Resume</a>`);
-        } else {
-          finalBody = finalBody.replace(/^.*\{\{RESUME_LINK\}\}.*$\n?/gm, '');
-        }
-
-        finalBody = finalBody.replace(/\n/g, "<br>");
-        finalBody = finalBody.replace(/\n/g, "<br>");
-
         const result = await sendEmail({
           email: hr.email,
           subject: emailSubject,
-          body: finalBody,
+          body: emailBody,
           attachments: mailAttachments
         });
 

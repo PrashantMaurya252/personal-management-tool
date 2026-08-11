@@ -13,13 +13,10 @@ export const sendEmail = async ({
       message: body,
     });
 
-    const text = body.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
-
     await transporter.sendMail({
-      from: `"Job Scout" <${process.env.MAIL_USER}>`,
+      from: process.env.MAIL_USER,
       to: email,
       subject,
-      text,
       html,
       attachments
     });

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sparkles, Send, Mail, RefreshCw, Paperclip, Loader2, Eye, Building2, User, AlertTriangle, Users, Calendar, Clock, Edit2, X, Trash2, Search, ArrowRight, SkipForward } from "lucide-react";
+import { Sparkles, Send, Mail, RefreshCw, Paperclip, Loader2, Eye, Building2, User, AlertTriangle, Users, Calendar, Clock, Edit2, X, Trash2, Search, ArrowRight, SkipForward, MousePointerClick } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
@@ -838,7 +838,9 @@ Full Stack Developer | Backend Developer | Software Developer
                   <th className="p-4">Purpose</th>
                   <th className="p-4">Subject</th>
                   <th className="p-4">Status / Timing</th>
-                  <th className="p-4 text-right pr-6">Actions</th>
+                  <th className="p-4">Opens</th>
+                  <th className="p-4">Actions (Clicks)</th>
+                  <th className="p-4 text-right pr-6">Manage</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-neutral-800/50">
@@ -872,6 +874,30 @@ Full Stack Developer | Backend Developer | Software Developer
                           {email.status === 'sent' && email.sentAt ? new Date(email.sentAt).toLocaleString() : ""}
                         </span>
                       </div>
+                    </td>
+                    <td className="p-4">
+                      {email.status === 'sent' ? (
+                        <div className="flex items-center">
+                          <Eye className={`w-4 h-4 mr-2 ${email.tracking?.isOpened ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400 dark:text-neutral-600"}`} />
+                          <span className={email.tracking?.isOpened ? "text-indigo-600 dark:text-indigo-400 font-bold" : "text-gray-500 dark:text-neutral-500"}>
+                            {email.tracking?.openedCount || 0}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      {email.status === 'sent' ? (
+                        <div className="flex items-center">
+                          <MousePointerClick className={`w-4 h-4 mr-2 ${email.tracking?.linkClicks?.length > 0 ? "text-purple-600 dark:text-purple-400" : "text-gray-400 dark:text-neutral-600"}`} />
+                          <span className={email.tracking?.linkClicks?.length > 0 ? "text-purple-600 dark:text-purple-400 font-bold" : "text-gray-500 dark:text-neutral-500"}>
+                            {email.tracking?.linkClicks?.length || 0}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="p-4 text-right pr-6">
                        {email.status === 'scheduled' && (

@@ -51,6 +51,29 @@ const emailSchema = new mongoose.Schema(
 
     scheduledAt: Date,
     sentAt: Date,
+
+    tracking: {
+      isOpened: {
+        type: Boolean,
+        default: false,
+      },
+
+      openedCount: {
+        type: Number,
+        default: 0,
+      },
+
+      openedAt: [Date],
+
+      linkClicks: [
+        {
+          url: String,
+          clickedAt: Date,
+          ipAddress: String,
+        },
+      ],
+    },
+
     attachments: [
       {
         fileName: String,
